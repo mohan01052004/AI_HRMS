@@ -11,16 +11,16 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Initialize from localStorage on mount
+  // Initialize from sessionStorage on mount
   useEffect(() => {
-    const savedToken = localStorage.getItem("hrms_token");
-    const savedUser = localStorage.getItem("hrms_user");
+    const savedToken = sessionStorage.getItem("hrms_token");
+    const savedUser = sessionStorage.getItem("hrms_user");
     if (savedToken && savedUser) {
       try {
         setToken(savedToken);
         setUser(JSON.parse(savedUser));
       } catch {
-        localStorage.clear();
+        sessionStorage.clear();
       }
     }
     setLoading(false);
@@ -29,16 +29,16 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (email, password) => {
     const response = await api.post("/auth/login/json", { email, password });
     const { access_token, user: userData } = response.data;
-    localStorage.setItem("hrms_token", access_token);
-    localStorage.setItem("hrms_user", JSON.stringify(userData));
+    sessionStorage.setItem("hrms_token", access_token);
+    sessionStorage.setItem("hrms_user", JSON.stringify(userData));
     setToken(access_token);
     setUser(userData);
     return userData;
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem("hrms_token");
-    localStorage.removeItem("hrms_user");
+    sessionStorage.removeItem("hrms_token");
+    sessionStorage.removeItem("hrms_user");
     setToken(null);
     setUser(null);
   }, []);
@@ -47,7 +47,7 @@ export function AuthProvider({ children }) {
     try {
       const response = await api.get("/auth/me");
       const userData = response.data;
-      localStorage.setItem("hrms_user", JSON.stringify(userData));
+      sessionStorage.setItem("hrms_user", JSON.stringify(userData));
       setUser(userData);
     } catch {
       logout();

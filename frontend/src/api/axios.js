@@ -14,7 +14,7 @@ const api = axios.create({
 // Attach JWT token to every request
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("hrms_token");
+    const token = sessionStorage.getItem("hrms_token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -30,8 +30,8 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       const isLoginRequest = error.config?.url && error.config.url.includes("/auth/login");
       if (!isLoginRequest) {
-        localStorage.removeItem("hrms_token");
-        localStorage.removeItem("hrms_user");
+        sessionStorage.removeItem("hrms_token");
+        sessionStorage.removeItem("hrms_user");
         window.location.href = "/login";
       }
     }
