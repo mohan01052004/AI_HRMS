@@ -126,8 +126,8 @@ export default function Navbar({ onHamburgerClick }) {
           </button>
 
           {showBell && (
-            <div className="absolute right-0 top-full mt-2 w-80 bg-slate-900 border border-slate-700
-              rounded-2xl shadow-2xl shadow-black/40 overflow-hidden">
+            <div className="fixed left-4 right-4 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80 bg-slate-900 border border-slate-700
+              rounded-2xl shadow-2xl shadow-black/40 overflow-hidden z-50">
               {/* Header */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
                 <div className="flex items-center gap-2">
