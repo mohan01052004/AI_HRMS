@@ -49,8 +49,15 @@ def get_settings() -> Settings:
 #   pool_pre_ping=True   — verify connections before use (handles drops)
 settings = get_settings()
 
+# Auto-resolve postgresql:// and postgres:// schemas to postgresql+asyncpg:// for async engines
+db_url = settings.database_url
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+elif db_url.startswith("postgresql://") and not db_url.startswith("postgresql+asyncpg://"):
+    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
 engine = create_async_engine(
-    settings.database_url,
+    db_url,
     echo=False,
     pool_pre_ping=True,
     pool_size=20,
