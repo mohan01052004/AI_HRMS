@@ -91,6 +91,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from fastapi.staticfiles import StaticFiles
+import os
+
+# Mount static folder for uploads (video interviews, etc.)
+os.makedirs(os.path.join("uploads", "video_interviews"), exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
 
 @app.middleware("http")
 async def add_process_time_header(request: Request, call_next):

@@ -9,6 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime, timezone
 import json
+import asyncio
+import uuid
+import os
+from typing import List
 from groq import Groq
 
 from database import get_db, get_mongo_db, get_settings
@@ -84,6 +88,23 @@ async def _log_ai_call(feature: str, input_summary: str, output_summary: str):
 
 # ─── 1. Resume Screening ──────────────────────────────────────────────────────
 
+def _clean_candidate_name(filename: str) -> str:
+    """Clean filename to extract a readable candidate name."""
+    name = filename.rsplit(".", 1)[0]
+    name = name.replace("_", " ").replace("-", " ")
+    return name.title()
+
+
+def _extract_text_from_pdf(pdf_bytes: bytes) -> str:
+    """Extract readable text from PDF bytes."""
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    text = ""
+    for page in doc:
+        text += page.get_text()
+    doc.close()
+    return text
+
+
 @router.post("/screen-resume")
 async def screen_resume(
     resume_file: UploadFile = File(...),
@@ -104,11 +125,7 @@ async def screen_resume(
     try:
         # Extract text from PDF using PyMuPDF (fitz)
         pdf_bytes = await resume_file.read()
-        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-        resume_text = ""
-        for page in doc:
-            resume_text += page.get_text()
-        doc.close()
+        resume_text = _extract_text_from_pdf(pdf_bytes)
     except Exception as e:
         raise HTTPException(
             status_code=400,
@@ -192,6 +209,166 @@ Resume Text:
     )
 
     return analysis
+
+
+@router.post("/bulk-screen-resumes")
+async def bulk_screen_resumes(
+    resumes: List[UploadFile] = File(...),
+    jd_text: str = Form(...),
+    job_title: str = Form(...),
+    _: User = Depends(require_hr),
+):
+    """
+    Screen multiple PDF resumes concurrently against a JD using Groq AI.
+    Saves each result to MongoDB resume_screenings.
+    """
+    if not resumes:
+        raise HTTPException(status_code=400, detail="No resume files were provided.")
+
+    for res in resumes:
+        if not res.filename.endswith(".pdf"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"File {res.filename} is not a PDF. Only PDF files are supported."
+            )
+
+    bulk_session_id = f"bulk_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
+    client = get_groq_client()
+
+    async def process_one(res_file: UploadFile):
+        try:
+            pdf_bytes = await res_file.read()
+            resume_text = _extract_text_from_pdf(pdf_bytes)
+        except Exception as e:
+            return {
+                "filename": res_file.filename,
+                "candidate_name": _clean_candidate_name(res_file.filename),
+                "error": f"Failed to parse PDF resume: {str(e)}",
+                "score": 0,
+                "recommendation": "Reject",
+                "matched_skills": [],
+                "missing_skills": [],
+                "strengths": [],
+                "weaknesses": [],
+                "summary": "Failed to parse PDF resume."
+            }
+
+        if not resume_text.strip():
+            return {
+                "filename": res_file.filename,
+                "candidate_name": _clean_candidate_name(res_file.filename),
+                "error": "The uploaded PDF file does not contain any readable text.",
+                "score": 0,
+                "recommendation": "Reject",
+                "matched_skills": [],
+                "missing_skills": [],
+                "strengths": [],
+                "weaknesses": [],
+                "summary": "PDF has no readable text."
+            }
+
+        candidate_name = _clean_candidate_name(res_file.filename)
+
+        messages = [
+            {
+                "role": "system",
+                "content": "You are an expert HR recruiter. Always respond with valid JSON only — no markdown, conversational text, or backticks.",
+            },
+            {
+                "role": "user",
+                "content": f"""You are an expert HR recruiter. Analyze this resume against the job description. Return a JSON object with these exact keys:
+score (0-100 integer), matched_skills (array of strings), missing_skills (array of strings), strengths (array of strings), weaknesses (array of strings), recommendation (string: 'Strong Hire' or 'Hire' or 'Maybe' or 'Reject'), summary (2-3 sentence overview)
+
+Job Description:
+{jd_text}
+
+Resume Text:
+{resume_text}""",
+            },
+        ]
+
+        try:
+            result_text = await asyncio.to_thread(
+                _chat, client, messages, model=GROQ_MODEL, temperature=0.1, max_tokens=2000, json_mode=True
+            )
+            analysis = json.loads(result_text)
+        except json.JSONDecodeError:
+            try:
+                analysis = _extract_json(result_text)
+            except Exception:
+                analysis = {"error": "Failed to parse Groq response as JSON."}
+        except Exception as e:
+            analysis = {"error": f"Groq API error: {str(e)}"}
+
+        if "error" in analysis:
+            return {
+                "filename": res_file.filename,
+                "candidate_name": candidate_name,
+                "error": analysis["error"],
+                "score": 0,
+                "recommendation": "Maybe",
+                "matched_skills": [],
+                "missing_skills": [],
+                "strengths": [],
+                "weaknesses": [],
+                "summary": "Could not analyze resume due to an API or JSON error."
+            }
+
+        # Ensure all required keys exist
+        required_keys = ["score", "matched_skills", "missing_skills", "strengths", "weaknesses", "recommendation", "summary"]
+        for key in required_keys:
+            if key not in analysis:
+                if key == "score":
+                    analysis[key] = 0
+                elif key == "recommendation":
+                    analysis[key] = "Maybe"
+                elif key == "summary":
+                    analysis[key] = "Could not generate summary."
+                else:
+                    analysis[key] = []
+
+        # Save to MongoDB
+        mongo_db = get_mongo_db()
+        document = {
+            "candidate_name": candidate_name,
+            "jd_text": jd_text,
+            "filename": res_file.filename,
+            "job_title": job_title,
+            "bulk_session_id": bulk_session_id,
+            "created_at": datetime.now(timezone.utc),
+            **analysis
+        }
+        await mongo_db.resume_screenings.insert_one(document)
+
+        # Log AI usage
+        await _log_ai_call(
+            "bulk_resume_screening",
+            f"Candidate: {candidate_name} ({res_file.filename})",
+            f"Score: {analysis.get('score')}, Rec: {analysis.get('recommendation')}",
+        )
+
+        return {
+            "filename": res_file.filename,
+            "candidate_name": candidate_name,
+            **analysis
+        }
+
+    sem = asyncio.Semaphore(3)
+
+    async def sem_process(res_file: UploadFile):
+        async with sem:
+            return await process_one(res_file)
+
+    tasks = [sem_process(res_file) for res_file in resumes]
+    results = await asyncio.gather(*tasks)
+
+    # Sort by score descending
+    results.sort(key=lambda x: x.get("score", 0), reverse=True)
+
+    return {
+        "bulk_session_id": bulk_session_id,
+        "results": results
+    }
 
 
 # ─── 2. AI Chatbot ────────────────────────────────────────────────────────────
@@ -867,6 +1044,181 @@ async def list_voice_interviews(
     mongo_db = get_mongo_db()
     cursor = mongo_db.voice_interviews.find(
         {}, {"transcript": 0}  # exclude full transcript for list view
+    ).sort("created_at", -1).limit(50)
+    docs = await cursor.to_list(length=50)
+    for doc in docs:
+        doc["_id"] = str(doc["_id"])
+        if "created_at" in doc:
+            doc["created_at"] = doc["created_at"].isoformat()
+    return docs
+
+
+# ─── 7. Video Interview Evaluation ───────────────────────────────────────────
+
+@router.post("/video-interview")
+async def evaluate_video_interview(
+    video_file: UploadFile = File(...),
+    candidate_name: str = Form(...),
+    job_title: str = Form(...),
+    jd_text: str = Form(...),
+    question_text: str = Form("Describe yourself and your experience."),
+    _: User = Depends(require_hr),
+):
+    """
+    Evaluate a recorded video response transcript.
+    Saves candidate video locally and evaluates speech contents using Groq Whisper + Llama 3.
+    """
+    ext = video_file.filename.split(".")[-1].lower()
+    if ext not in ["webm", "mp4", "mpeg", "wav", "avi", "mov", "ogg"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Only standard audio/video formats are supported (webm, mp4, etc.)."
+        )
+
+    # 1. Save video file to static directory
+    session_id = uuid.uuid4().hex
+    filename = f"{session_id}.{ext}"
+    upload_dir = os.path.join("uploads", "video_interviews")
+    os.makedirs(upload_dir, exist_ok=True)
+    file_path = os.path.join(upload_dir, filename)
+
+    try:
+        content = await video_file.read()
+        with open(file_path, "wb") as f:
+            f.write(content)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to save video response: {str(e)}"
+        )
+
+    # 2. Call Groq Whisper API for speech-to-text
+    client = get_groq_client()
+    try:
+        content_type = video_file.content_type or f"video/{ext}"
+        
+        # Whisper model requires file tuple: (filename, bytes, content_type)
+        transcription = await asyncio.to_thread(
+            client.audio.transcriptions.create,
+            file=(filename, content, content_type),
+            model="whisper-large-v3",
+            response_format="json"
+        )
+        transcript = transcription.text
+    except Exception as e:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        raise HTTPException(
+            status_code=503,
+            detail=f"Groq speech translation failed: {str(e)}"
+        )
+
+    if not transcript or not transcript.strip():
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        raise HTTPException(
+            status_code=400,
+            detail="No spoken audio could be detected in the video file."
+        )
+
+    # 3. Analyze transcript text against JD using Groq Llama 3
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are an expert HR interviewer. Evaluate candidate video response transcripts "
+                "and always respond with valid JSON only — no markdown or extra conversational text."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"""Evaluate this video interview response transcript for a {job_title} position.
+
+Job Description:
+{jd_text}
+
+Interview Question Asked:
+{question_text}
+
+Candidate's Response:
+\"\"\"{transcript}\"\"\"
+
+Return ONLY this JSON structure:
+{{
+  "score": <integer 0-100>,
+  "communication_score": <integer 0-100>,
+  "confidence_score": <integer 0-100>,
+  "key_strengths": ["<strength1>", "<strength2>", "<strength3>"],
+  "concerns": ["<concern1>", "<concern2>"],
+  "recommendation": "<one of: Strong Hire | Hire | Maybe | Reject>",
+  "summary": "<2-3 sentence professional assessment>",
+  "next_steps": "<specific recommended next step>"
+}}""",
+        },
+    ]
+
+    try:
+        result_text = await asyncio.to_thread(
+            _chat, client, messages, model=GROQ_MODEL, temperature=0.2,
+            max_tokens=1000, json_mode=True
+        )
+        assessment = json.loads(result_text)
+    except json.JSONDecodeError:
+        try:
+            assessment = _extract_json(result_text)
+        except Exception:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to parse AI evaluation response. Please retry."
+            )
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Groq API error: {str(e)}")
+
+    # Ensure required keys exist
+    defaults = {
+        "score": 50, "communication_score": 50, "confidence_score": 50,
+        "key_strengths": [], "concerns": [], "recommendation": "Maybe",
+        "summary": "Assessment could not be completed.", "next_steps": "Review manually.",
+    }
+    for k, v in defaults.items():
+        if k not in assessment:
+            assessment[k] = v
+
+    # Save to MongoDB
+    mongo_db = get_mongo_db()
+    video_url = f"/uploads/video_interviews/{filename}"
+    document = {
+        "candidate_name": candidate_name,
+        "job_title": job_title,
+        "video_url": video_url,
+        "transcript": transcript,
+        "question": question_text,
+        "interview_type": "video",
+        "created_at": datetime.now(timezone.utc),
+        **assessment,
+    }
+    result = await mongo_db.video_interviews.insert_one(document)
+    assessment["_id"] = str(result.inserted_id)
+    assessment["video_url"] = video_url
+    assessment["transcript"] = transcript
+
+    await _log_ai_call(
+        "video_interview",
+        f"Candidate: {candidate_name} for {job_title}",
+        f"Score: {assessment.get('score')}, Rec: {assessment.get('recommendation')}",
+    )
+
+    return assessment
+
+
+@router.get("/video-interviews")
+async def list_video_interviews(
+    _: User = Depends(require_hr),
+):
+    """List all video interview assessments from MongoDB."""
+    mongo_db = get_mongo_db()
+    cursor = mongo_db.video_interviews.find(
+        {}, {"transcript": 0}  # exclude transcript for list view
     ).sort("created_at", -1).limit(50)
     docs = await cursor.to_list(length=50)
     for doc in docs:

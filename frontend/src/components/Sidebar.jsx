@@ -8,7 +8,7 @@ import api from "../api/axios";
 import {
   LayoutDashboard, Users, Clock, CalendarOff, DollarSign,
   Briefcase, BarChart3, ClipboardList, LogOut, ChevronLeft,
-  ChevronRight, Building2, Bot, X,
+  ChevronRight, Building2, Bot, X, PieChart,
 } from "lucide-react";
 
 const ALL_NAV_ITEMS = [
@@ -18,6 +18,7 @@ const ALL_NAV_ITEMS = [
   { path: "/leave", label: "Leave", icon: CalendarOff, roles: ["management_admin", "senior_manager", "hr_recruiter", "employee"] },
   { path: "/payroll", label: "Payroll", icon: DollarSign, roles: ["management_admin", "hr_recruiter"] },
   { path: "/recruitment", label: "Recruitment", icon: Briefcase, roles: ["management_admin", "hr_recruiter"] },
+  { path: "/analytics", label: "Analytics", icon: PieChart, roles: ["management_admin", "hr_recruiter"] },
   { path: "/performance", label: "Performance", icon: BarChart3, roles: ["management_admin", "senior_manager", "hr_recruiter", "employee"] },
   { path: "/onboarding", label: "Onboarding", icon: ClipboardList, roles: ["management_admin", "senior_manager", "employee"] },
 ];

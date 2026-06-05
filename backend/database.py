@@ -124,6 +124,7 @@ async def init_mongo_indexes():
     await db.ai_logs.create_index("created_at")
     await db.ai_logs.create_index("feature")
     await db.voice_interviews.create_index("created_at")
+    await db.video_interviews.create_index("created_at")
 
 
 async def init_db():

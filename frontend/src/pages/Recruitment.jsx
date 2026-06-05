@@ -5,6 +5,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Briefcase, Plus, X, Loader2, Sparkles, FileText, Star,
   Mic, MicOff, Volume2, CheckCircle2, AlertTriangle, User,
+  Bot, Layers, Download, Trash2, ChevronDown, ChevronUp,
+  Video, VideoOff, Play, Square,
 } from "lucide-react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
@@ -56,6 +58,28 @@ export default function Recruitment() {
   const [voiceResumeFile, setVoiceResumeFile] = useState(null);
   const [voiceResumeText, setVoiceResumeText] = useState("");
   const recognitionRef = useRef(null);
+
+  // Bulk resume state
+  const [bulkResumes, setBulkResumes] = useState([]);
+  const [bulkJdText, setBulkJdText] = useState("");
+  const [bulkJobTitle, setBulkJobTitle] = useState("");
+  const [bulkResults, setBulkResults] = useState(null);
+  const [bulkScreening, setBulkScreening] = useState(false);
+  const [expandedCandidate, setExpandedCandidate] = useState(null);
+
+  // Video interview state
+  const [videoStream, setVideoStream] = useState(null);
+  const [videoRecorder, setVideoRecorder] = useState(null);
+  const [videoUrl, setVideoUrl] = useState(null);
+  const [videoBlob, setVideoBlob] = useState(null);
+  const [videoResult, setVideoResult] = useState(null);
+  const [videoRecording, setVideoRecording] = useState(false);
+  const [videoTimer, setVideoTimer] = useState(0);
+  const [videoUploading, setVideoUploading] = useState(false);
+  const [videoForm, setVideoForm] = useState({ candidate_name: "", job_title: "" });
+  const [videoQuestionText, setVideoQuestionText] = useState("Please introduce yourself and your background.");
+  const videoPreviewRef = useRef(null);
+  const timerRef = useRef(null);
 
   useEffect(() => {
     const fetchJobs = async () => {
@@ -111,10 +135,232 @@ export default function Recruitment() {
     } finally {
       setScreening(false);
     }
+  };
+
+  const handleBulkScreen = async (e) => {
+    e.preventDefault();
+    if (bulkResumes.length === 0 || !bulkJdText.trim()) {
+      toast.error("Please upload at least one PDF resume and verify the job description.");
+      return;
+    }
+    setBulkScreening(true);
+    setBulkResults(null);
+    setExpandedCandidate(null);
+    try {
+      const formData = new FormData();
+      bulkResumes.forEach((file) => {
+        formData.append("resumes", file);
+      });
+      formData.append("jd_text", bulkJdText);
+      formData.append("job_title", bulkJobTitle || "the position");
+      const res = await api.post("/ai/bulk-screen-resumes", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setBulkResults(res.data.results);
+      toast.success("Bulk screening complete!");
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Bulk screening failed. Check Groq configurations.");
+    } finally {
+      setBulkScreening(false);
+    }
+  };
+
+  const exportToCSV = () => {
+    if (!bulkResults || bulkResults.length === 0) return;
+    
+    const headers = [
+      "Rank",
+      "Candidate Name",
+      "Filename",
+      "Match Score",
+      "Recommendation",
+      "Summary",
+      "Matched Skills",
+      "Missing Skills",
+      "Strengths",
+      "Weaknesses"
+    ];
+    
+    const rows = bulkResults.map((item, index) => [
+      index + 1,
+      item.candidate_name,
+      item.filename,
+      item.score,
+      item.recommendation,
+      `"${(item.summary || "").replace(/"/g, '""')}"`,
+      `"${(item.matched_skills || []).join(", ").replace(/"/g, '""')}"`,
+      `"${(item.missing_skills || []).join(", ").replace(/"/g, '""')}"`,
+      `"${(item.strengths || []).join("; ").replace(/"/g, '""')}"`,
+      `"${(item.weaknesses || []).join("; ").replace(/"/g, '""')}"`
+    ]);
+    
+    const csvContent = [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `bulk_screening_${bulkJobTitle.toLowerCase().replace(/\s+/g, "_")}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const enableCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      setVideoStream(stream);
+      if (videoPreviewRef.current) {
+        videoPreviewRef.current.srcObject = stream;
+      }
+      toast.success("Camera and microphone enabled.");
+    } catch (err) {
+      console.error(err);
+      toast.error("Could not access camera/microphone. Please check permissions.");
+    }
+  };
+
+  const stopCamera = useCallback(() => {
+    if (videoStream) {
+      videoStream.getTracks().forEach((track) => track.stop());
+      setVideoStream(null);
+    }
+  }, [videoStream]);
+
+  const startVideoRecording = () => {
+    if (!videoStream) return;
+    setVideoBlob(null);
+    setVideoUrl(null);
+    setVideoResult(null);
+    
+    const chunks = [];
+    let recorder;
+    try {
+      recorder = new MediaRecorder(videoStream, { mimeType: "video/webm;codecs=vp9" });
+    } catch (e) {
+      try {
+        recorder = new MediaRecorder(videoStream, { mimeType: "video/webm" });
+      } catch (e2) {
+        recorder = new MediaRecorder(videoStream);
+      }
+    }
+    
+    recorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) {
+        chunks.push(e.data);
+      }
+    };
+    
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: "video/webm" });
+      setVideoBlob(blob);
+      setVideoUrl(URL.createObjectURL(blob));
+    };
+    
+    setVideoRecorder(recorder);
+    recorder.start(1000);
+    setVideoRecording(true);
+    setVideoTimer(0);
+    
+    timerRef.current = setInterval(() => {
+      setVideoTimer((prev) => {
+        if (prev >= 120) {
+          clearInterval(timerRef.current);
+          recorder.stop();
+          setVideoRecording(false);
+          stopCamera();
+          toast.success("Recording auto-stopped at 2 minutes limit.");
+          return 120;
+        }
+        return prev + 1;
+      });
+    }, 1000);
+    
+    toast.success("Recording started...");
+  };
+
+  const stopVideoRecording = () => {
+    if (videoRecorder && videoRecording) {
+      videoRecorder.stop();
+      setVideoRecording(false);
+      clearInterval(timerRef.current);
+      stopCamera();
+      toast.success("Recording stopped.");
+    }
+  };
+
+  const submitVideoInterview = async () => {
+    if (!videoBlob) {
+      toast.error("Please record a video response first.");
+      return;
+    }
+    setVideoUploading(true);
+    setVideoResult(null);
+    try {
+      const formData = new FormData();
+      formData.append("video_file", videoBlob, "interview_response.webm");
+      formData.append("candidate_name", videoForm.candidate_name || "Candidate");
+      formData.append("job_title", videoForm.job_title || selectedJob?.title || "the position");
+      formData.append("jd_text", selectedJob?.description || "");
+      formData.append("question_text", videoQuestionText);
+      
+      const res = await api.post("/ai/video-interview", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setVideoResult(res.data);
+      toast.success("Video evaluation complete!");
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Video evaluation failed. Check Groq configurations.");
+    } finally {
+      setVideoUploading(false);
+    }
+  };
+
+  const resetVideoInterview = () => {
+    stopCamera();
+    setVideoUrl(null);
+    setVideoBlob(null);
+    setVideoResult(null);
+    setVideoRecording(false);
+    setVideoTimer(0);
+    if (timerRef.current) clearInterval(timerRef.current);
+  };
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const getVideoSrc = (path) => {
+    if (!path) return "";
+    const baseURL = api.defaults.baseURL || "http://localhost:8000";
+    const base = baseURL.endsWith("/") ? baseURL.slice(0, -1) : baseURL;
+    const sub = path.startsWith("/") ? path : `/${path}`;
+    return `${base}${sub}`;
   };  const openScreener = (job) => {
     setSelectedJob(job);
     setScreenerForm({ candidate_name: "", resume_file: null, jd_text: job.description || "" });
     setVoiceForm({ candidate_name: "", job_title: job.title });
+    setBulkJdText(job.description || "");
+    setBulkJobTitle(job.title || "");
+    setBulkResumes([]);
+    setBulkResults(null);
+    setExpandedCandidate(null);
+    
+    // Reset video states
+    setVideoUrl(null);
+    setVideoBlob(null);
+    setVideoResult(null);
+    setVideoRecording(false);
+    setVideoTimer(0);
+    setVideoForm({ candidate_name: "", job_title: job.title });
+    setVideoQuestionText("Please introduce yourself and your background.");
+    if (videoStream) {
+      videoStream.getTracks().forEach((track) => track.stop());
+    }
+    setVideoStream(null);
+
     setScreenResult(null);
     setVoiceResult(null);
     setVoiceTranscript("");
@@ -445,7 +691,7 @@ export default function Recruitment() {
                 <Sparkles size={16} className="text-violet-400" />
                 <h3 className="font-semibold text-white">AI Candidate Screening — {selectedJob?.title}</h3>
               </div>
-              <button onClick={() => setShowScreener(false)} className="text-slate-400 hover:text-white"><X size={18} /></button>
+              <button onClick={() => { stopCamera(); setShowScreener(false); }} className="text-slate-400 hover:text-white"><X size={18} /></button>
             </div>
 
             {/* Tab Switcher */}
@@ -459,7 +705,29 @@ export default function Recruitment() {
                 }`}
               >
                 <FileText size={14} />
-                Resume Screening
+                Single Resume
+              </button>
+              <button
+                onClick={() => setScreenerTab("bulk")}
+                className={`flex-1 py-3 text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
+                  screenerTab === "bulk"
+                    ? "text-violet-400 border-b-2 border-violet-500"
+                    : "text-slate-400 hover:text-slate-300"
+                }`}
+              >
+                <Layers size={14} />
+                Bulk Resume
+              </button>
+              <button
+                onClick={() => setScreenerTab("video")}
+                className={`flex-1 py-3 text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
+                  screenerTab === "video"
+                    ? "text-violet-400 border-b-2 border-violet-500"
+                    : "text-slate-400 hover:text-slate-300"
+                }`}
+              >
+                <Video size={14} />
+                Video Interview
               </button>
               <button
                 onClick={() => setScreenerTab("voice")}
@@ -565,6 +833,484 @@ export default function Recruitment() {
                       <button onClick={() => setScreenResult(null)}
                         className="w-full py-2 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 text-sm">
                         Screen Another Candidate
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── Bulk Resume Tab ── */}
+              {screenerTab === "bulk" && (
+                <div className="space-y-4">
+                  {!bulkResults ? (
+                    <form onSubmit={handleBulkScreen} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3 text-left">
+                        <div>
+                          <label className="block text-xs font-medium text-slate-400 mb-1">Job Title *</label>
+                          <input type="text" value={bulkJobTitle}
+                            onChange={(e) => setBulkJobTitle(e.target.value)}
+                            placeholder="Python Developer"
+                            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-400 mb-1">Job Description (pre-filled)</label>
+                          <textarea rows={1} value={bulkJdText}
+                            onChange={(e) => setBulkJdText(e.target.value)}
+                            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white resize-none focus:outline-none focus:border-violet-500" />
+                        </div>
+                      </div>
+
+                      <div className="text-left">
+                        <label className="block text-xs font-medium text-slate-400 mb-1">Upload Resumes (PDF, max 20) *</label>
+                        <div className="border-2 border-dashed border-slate-700 rounded-2xl p-6 hover:border-violet-500/50 transition-colors bg-slate-800/30 flex flex-col items-center justify-center cursor-pointer relative">
+                          <input
+                            type="file"
+                            multiple
+                            accept=".pdf"
+                            onChange={(e) => {
+                              const selectedFiles = Array.from(e.target.files || []);
+                              const validFiles = selectedFiles.filter(file => file.name.endsWith(".pdf"));
+                              if (validFiles.length < selectedFiles.length) {
+                                toast.error("Only PDF files are supported!");
+                              }
+                              setBulkResumes(prev => {
+                                const newFiles = [...prev, ...validFiles];
+                                return newFiles.slice(0, 20);
+                              });
+                            }}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          />
+                          <Layers className="text-slate-500 mb-2" size={32} />
+                          <p className="text-sm text-white font-medium">Drag & drop resumes or click to upload</p>
+                          <p className="text-xs text-slate-500 mt-1">Supports PDF files only (Up to 20 files)</p>
+                        </div>
+                      </div>
+
+                      {bulkResumes.length > 0 && (
+                        <div className="bg-slate-800/40 border border-slate-800 rounded-xl p-3 space-y-2">
+                          <p className="text-xs text-slate-400 font-semibold flex items-center justify-between">
+                            <span>Selected Resumes ({bulkResumes.length}):</span>
+                            <button
+                              type="button"
+                              onClick={() => setBulkResumes([])}
+                              className="text-rose-400 hover:text-rose-300 text-[10px]"
+                            >
+                              Clear All
+                            </button>
+                          </p>
+                          <div className="max-h-[150px] overflow-y-auto space-y-1.5 pr-1">
+                            {bulkResumes.map((file, idx) => (
+                              <div key={idx} className="flex items-center justify-between bg-slate-800/80 border border-slate-700/50 px-3 py-2 rounded-lg text-xs text-slate-300">
+                                <span className="truncate max-w-[85%]">{file.name}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setBulkResumes(prev => prev.filter((_, i) => i !== idx))}
+                                  className="text-slate-500 hover:text-rose-400 transition-colors"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <button type="submit" disabled={bulkScreening || bulkResumes.length === 0}
+                        className="w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium disabled:opacity-60 flex items-center justify-center gap-2">
+                        {bulkScreening ? (
+                          <>
+                            <Loader2 size={15} className="animate-spin" />
+                            Screening Resumes (Concurrently via Groq)...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles size={15} />
+                            Screen all resumes ({bulkResumes.length})
+                          </>
+                        )}
+                      </button>
+                    </form>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="text-left">
+                          <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Bulk screening results</p>
+                          <p className="text-sm font-bold text-white mt-0.5">{bulkResults.length} candidates screened</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={exportToCSV}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-xs font-semibold rounded-lg text-white transition-all duration-150"
+                          >
+                            <Download size={13} />
+                            Export CSV
+                          </button>
+                          <button
+                            onClick={() => {
+                              setBulkResults(null);
+                              setBulkResumes([]);
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600/10 border border-violet-600/20 hover:bg-violet-600/20 text-xs font-semibold rounded-lg text-violet-400 transition-all duration-150"
+                          >
+                            Screen New Batch
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-900/40">
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left border-collapse">
+                            <thead>
+                              <tr className="bg-slate-800/40 text-[10px] uppercase font-bold text-slate-400 border-b border-slate-800">
+                                <th className="py-3 px-4 w-12 text-center">Rank</th>
+                                <th className="py-3 px-4">Candidate</th>
+                                <th className="py-3 px-4 text-center">Score</th>
+                                <th className="py-3 px-4 text-center">Recommendation</th>
+                                <th className="py-3 px-4 w-10"></th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {bulkResults.map((item, idx) => {
+                                const isExpanded = expandedCandidate === idx;
+                                return (
+                                  <>
+                                    <tr
+                                      key={idx}
+                                      onClick={() => setExpandedCandidate(isExpanded ? null : idx)}
+                                      className="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors cursor-pointer text-xs text-slate-300"
+                                    >
+                                      <td className="py-3 px-4 text-center">
+                                        <span className="w-6 h-6 rounded-full bg-slate-800/80 border border-slate-700/60 flex items-center justify-center font-bold text-[10px] mx-auto text-slate-400">
+                                          {idx + 1}
+                                        </span>
+                                      </td>
+                                      <td className="py-3 px-4 font-semibold text-white">
+                                        <div className="text-left">
+                                          <p>{item.candidate_name}</p>
+                                          <p className="text-[10px] text-slate-500 font-normal mt-0.5 truncate max-w-[200px]">{item.filename}</p>
+                                        </div>
+                                      </td>
+                                      <td className="py-3 px-4">
+                                        <div className="flex flex-col items-center justify-center">
+                                          <span className={`font-bold ${getScoreColor(item.score)}`}>{item.score}</span>
+                                          <div className="w-16 h-1 bg-slate-800 rounded-full mt-1 overflow-hidden">
+                                            <div
+                                              className={`h-full rounded-full ${
+                                                item.score >= 75 ? "bg-emerald-500" : item.score >= 50 ? "bg-amber-500" : "bg-rose-500"
+                                              }`}
+                                              style={{ width: `${item.score}%` }}
+                                            />
+                                          </div>
+                                        </div>
+                                      </td>
+                                      <td className="py-3 px-4 text-center">
+                                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                                          item.recommendation === "Strong Hire"
+                                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                            : item.recommendation === "Hire"
+                                            ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                                            : item.recommendation === "Maybe"
+                                            ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                                            : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                                        }`}>
+                                          {item.recommendation}
+                                        </span>
+                                      </td>
+                                      <td className="py-3 px-4 text-center">
+                                        {isExpanded ? <ChevronUp size={14} className="text-slate-500 mx-auto" /> : <ChevronDown size={14} className="text-slate-500 mx-auto" />}
+                                      </td>
+                                    </tr>
+
+                                    {isExpanded && (
+                                      <tr className="bg-slate-800/15 border-b border-slate-800">
+                                        <td colSpan={5} className="py-4 px-6 text-left">
+                                          <div className="space-y-3">
+                                            {item.summary && (
+                                              <div>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Executive Summary</p>
+                                                <p className="text-xs text-slate-300 mt-1 leading-relaxed">{item.summary}</p>
+                                              </div>
+                                            )}
+
+                                            <div className="grid grid-cols-2 gap-4">
+                                              <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-3">
+                                                <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-2">✓ Matched Skills</p>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                  {(item.matched_skills || []).length > 0 ? (
+                                                    (item.matched_skills || []).map((s, i) => (
+                                                      <span key={i} className="text-[10px] px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded-full">{s}</span>
+                                                    ))
+                                                  ) : (
+                                                    <span className="text-[10px] text-slate-500 italic">None matched</span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                              <div className="bg-rose-500/5 border border-rose-500/20 rounded-xl p-3">
+                                                <p className="text-[10px] font-bold text-rose-400 uppercase tracking-wider mb-2">✗ Missing Skills</p>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                  {(item.missing_skills || []).length > 0 ? (
+                                                    (item.missing_skills || []).map((s, i) => (
+                                                      <span key={i} className="text-[10px] px-2 py-0.5 bg-rose-500/10 text-rose-400 rounded-full">{s}</span>
+                                                    ))
+                                                  ) : (
+                                                    <span className="text-[10px] text-slate-500 italic">None missing</span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-4">
+                                              <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-3">
+                                                <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-2">💪 Key Strengths</p>
+                                                <ul className="list-disc pl-4 space-y-1">
+                                                  {(item.strengths || []).length > 0 ? (
+                                                    (item.strengths || []).map((s, i) => (
+                                                      <li key={i} className="text-xs text-slate-300">{s}</li>
+                                                    ))
+                                                  ) : (
+                                                    <li className="text-xs text-slate-500 italic">None listed</li>
+                                                  )}
+                                                </ul>
+                                              </div>
+                                              <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3">
+                                                <p className="text-[10px] font-bold text-amber-400 uppercase tracking-wider mb-2">⚠️ Areas for Improvement</p>
+                                                <ul className="list-disc pl-4 space-y-1">
+                                                  {(item.weaknesses || []).length > 0 ? (
+                                                    (item.weaknesses || []).map((w, i) => (
+                                                      <li key={i} className="text-xs text-slate-300">{w}</li>
+                                                    ))
+                                                  ) : (
+                                                    <li className="text-xs text-slate-500 italic">None listed</li>
+                                                  )}
+                                                </ul>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    )}
+                                  </>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── Video Interview Tab ── */}
+              {screenerTab === "video" && (
+                <div className="space-y-4 text-left">
+                  {!videoResult ? (
+                    !videoUrl ? (
+                      <div className="space-y-5">
+                        <div className="grid grid-cols-2 gap-3 text-left">
+                          <div>
+                            <label className="block text-xs font-medium text-slate-400 mb-1">Candidate Name *</label>
+                            <input type="text" value={videoForm.candidate_name}
+                              onChange={(e) => setVideoForm((p) => ({ ...p, candidate_name: e.target.value }))}
+                              placeholder="Jane Smith"
+                              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-400 mb-1">Position</label>
+                            <input type="text" value={videoForm.job_title}
+                              onChange={(e) => setVideoForm((p) => ({ ...p, job_title: e.target.value }))}
+                              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500" />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-slate-400 mb-1">Select Interview Question Prompt</label>
+                          <select 
+                            value={videoQuestionText}
+                            onChange={(e) => setVideoQuestionText(e.target.value)}
+                            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500"
+                          >
+                            <option value="Please introduce yourself and your background.">Please introduce yourself and your background.</option>
+                            <option value="Why are you interested in this position?">Why are you interested in this position?</option>
+                            <option value="Describe a challenging technical project you worked on and how you handled it.">Describe a challenging technical project you worked on and how you handled it.</option>
+                            <option value="What are your greatest professional strengths and weaknesses?">What are your greatest professional strengths and weaknesses?</option>
+                          </select>
+                        </div>
+
+                        {!videoStream ? (
+                          <div className="bg-slate-800/40 border border-slate-800 rounded-2xl p-6 text-center space-y-4">
+                            <Video className="text-slate-500 mx-auto" size={40} />
+                            <div>
+                              <p className="text-sm font-semibold text-white">Camera & Microphone Access Required</p>
+                              <p className="text-xs text-slate-400 mt-1">Please enable access to record your video response.</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={enableCamera}
+                              className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-medium text-sm transition-colors"
+                            >
+                              Enable Camera
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            <div className="relative border border-slate-700 rounded-2xl overflow-hidden aspect-video max-w-md mx-auto bg-slate-950">
+                              <video ref={videoPreviewRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
+                              
+                              {videoRecording && (
+                                <div className="absolute top-3 left-3 bg-red-600/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1.5 animate-pulse">
+                                  <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
+                                  REC {formatTime(videoTimer)}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex justify-center gap-3">
+                              {!videoRecording ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={startVideoRecording}
+                                    disabled={!videoForm.candidate_name.trim()}
+                                    className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-medium text-sm flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                                  >
+                                    <Video size={16} />
+                                    Start Recording
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={stopCamera}
+                                    className="px-4 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 text-sm transition-colors"
+                                  >
+                                    Disable Camera
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={stopVideoRecording}
+                                  className="px-5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white font-medium text-sm flex items-center gap-1.5 hover:bg-slate-700 transition-colors"
+                                >
+                                  <Square size={14} className="fill-white" />
+                                  Stop Recording
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-5 text-center">
+                        <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider text-left">Preview Recorded Response</p>
+                        
+                        <div className="border border-slate-700 rounded-2xl overflow-hidden aspect-video max-w-md mx-auto bg-slate-950">
+                          <video src={videoUrl} controls className="w-full h-full object-cover" />
+                        </div>
+
+                        <div className="flex gap-3 max-w-md mx-auto">
+                          <button
+                            type="button"
+                            onClick={resetVideoInterview}
+                            disabled={videoUploading}
+                            className="flex-1 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 text-sm font-medium transition-colors"
+                          >
+                            Retake Video
+                          </button>
+                          
+                          <button
+                            type="button"
+                            onClick={submitVideoInterview}
+                            disabled={videoUploading}
+                            className="flex-1 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-60"
+                          >
+                            {videoUploading ? (
+                              <>
+                                <Loader2 size={15} className="animate-spin" />
+                                AI Evaluation...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles size={15} />
+                                Submit to AI
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-5 bg-slate-800 rounded-2xl">
+                        <div className="text-left">
+                          <p className="text-slate-400 text-sm">AI Match Score</p>
+                          <p className={`text-5xl font-bold mt-1 ${getScoreColor(videoResult.score)}`}>{videoResult.score}</p>
+                          <p className="text-slate-500 text-xs mt-1">out of 100</p>
+                        </div>
+                        <div className="text-right space-y-1.5">
+                          <p className={`font-semibold ${getScoreColor(videoResult.score)}`}>{videoResult.recommendation}</p>
+                          <div>
+                            <p className="text-[10px] text-slate-500">Communication</p>
+                            <p className="text-xs font-bold text-slate-200">{videoResult.communication_score}/100</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-slate-500">Confidence</p>
+                            <p className="text-xs font-bold text-slate-200">{videoResult.confidence_score}/100</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {videoResult.video_url && (
+                        <div className="text-left">
+                          <p className="text-xs font-medium text-slate-400 mb-2">Saved Recording</p>
+                          <div className="border border-slate-800 rounded-xl overflow-hidden aspect-video max-w-sm bg-slate-950">
+                            <video src={getVideoSrc(videoResult.video_url)} controls className="w-full h-full object-cover" />
+                          </div>
+                        </div>
+                      )}
+
+                      {videoResult.summary && (
+                        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+                          <p className="text-xs font-medium text-slate-400 mb-2">AI Assessment Summary</p>
+                          <p className="text-sm text-slate-300 leading-relaxed">{videoResult.summary}</p>
+                        </div>
+                      )}
+
+                      {videoResult.transcript && (
+                        <div className="bg-slate-800/25 border border-slate-800 rounded-xl p-4">
+                          <p className="text-xs font-medium text-slate-400 mb-2">Transcribed Response (Whisper AI)</p>
+                          <p className="text-xs text-slate-400 italic leading-relaxed">"{videoResult.transcript}"</p>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-3">
+                          <p className="text-xs font-medium text-emerald-400 mb-2">💪 Key Strengths</p>
+                          <ul className="space-y-1 pl-4 list-disc text-xs text-slate-300">
+                            {(videoResult.key_strengths || []).map((s, i) => (
+                              <li key={i}>{s}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3">
+                          <p className="text-xs font-medium text-amber-400 mb-2">⚠️ Areas of Concern</p>
+                          <ul className="space-y-1 pl-4 list-disc text-xs text-slate-300">
+                            {(videoResult.concerns || []).map((c, i) => (
+                              <li key={i}>{c}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+
+                      {videoResult.next_steps && (
+                        <div className="bg-sky-500/5 border border-sky-500/20 rounded-xl p-3">
+                          <p className="text-xs font-medium text-sky-400 mb-1">→ Recommended Next Steps</p>
+                          <p className="text-xs text-slate-300">{videoResult.next_steps}</p>
+                        </div>
+                      )}
+
+                      <button onClick={resetVideoInterview}
+                        className="w-full py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 text-sm">
+                        New Video Interview
                       </button>
                     </div>
                   )}

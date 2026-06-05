@@ -25,6 +25,7 @@ import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
+import Analytics from "./pages/Analytics";
 
 // Layout wrapper for authenticated pages
 function AppLayout() {
@@ -131,6 +132,15 @@ export default function App() {
                 element={
                   <ProtectedRoute allowedRoles={["management_admin", "hr_recruiter"]}>
                     <Recruitment />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/analytics"
+                element={
+                  <ProtectedRoute allowedRoles={["management_admin", "hr_recruiter"]}>
+                    <Analytics />
                   </ProtectedRoute>
                 }
               />
