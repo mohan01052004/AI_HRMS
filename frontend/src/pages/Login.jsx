@@ -1,16 +1,16 @@
 /**
- * pages/Login.jsx — Full login page with JWT auth
+ * pages/Login.jsx — Full login page with JWT auth (Redesigned with premium Glassmorphism & floating orbs)
  */
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Eye, EyeOff, Building2, Loader2, AlertCircle } from "lucide-react";
 
 const DEMO_USERS = [
-  { label: "Admin", email: "admin@hrms.com", role: "management_admin" },
-  { label: "Manager", email: "manager@hrms.com", role: "senior_manager" },
-  { label: "HR", email: "hr@hrms.com", role: "hr_recruiter" },
-  { label: "Employee", email: "emp@hrms.com", role: "employee" },
+  { label: "Admin", email: "admin@hrms.com", role: "management_admin", color: "from-violet-500 to-fuchsia-500" },
+  { label: "Manager", email: "manager@hrms.com", role: "senior_manager", color: "from-blue-500 to-indigo-500" },
+  { label: "HR", email: "hr@hrms.com", role: "hr_recruiter", color: "from-emerald-500 to-teal-500" },
+  { label: "Employee", email: "emp@hrms.com", role: "employee", color: "from-amber-500 to-orange-500" },
 ];
 
 export default function Login() {
@@ -56,61 +56,67 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background blobs */}
+    <div className="min-h-screen bg-[#030712] flex items-center justify-center p-4 relative overflow-hidden font-sans">
+      {/* Background drifting glow blobs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -left-40 w-96 h-96 bg-violet-600/20 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-violet-500/10 rounded-full blur-2xl" />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-violet-600/15 rounded-full blur-[120px] animate-blob" />
+        <div className="absolute bottom-1/4 right-1/4 w-[450px] h-[450px] bg-fuchsia-600/10 rounded-full blur-[140px] animate-blob-reverse" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-blue-500/10 rounded-full blur-[100px] animate-pulse-slow" />
       </div>
 
-      <div className="w-full max-w-md relative">
-        {/* Logo */}
+      <div className="w-full max-w-md relative z-10 animate-fade-in">
+        {/* Logo and Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 mb-4 shadow-lg shadow-violet-500/30">
-            <Building2 size={28} className="text-white" />
+          <div className="relative inline-flex mb-4">
+            <div className="absolute inset-0 bg-gradient-to-br from-violet-600 to-fuchsia-600 rounded-2xl blur-md opacity-50 animate-pulse-slow" />
+            <div className="relative inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-slate-900 border border-white/10 text-white">
+              <Building2 size={26} className="text-violet-400" />
+            </div>
           </div>
-          <h1 className="text-3xl font-bold text-white">AI-HRMS</h1>
-          <p className="text-slate-400 text-sm mt-1">
-            AI-Powered Human Resource Management
+          <h1 className="text-3xl font-extrabold text-white tracking-tight text-glow-violet font-display">
+            AI-<span className="bg-clip-text text-transparent bg-gradient-to-r from-violet-400 to-fuchsia-400">HRMS</span>
+          </h1>
+          <p className="text-slate-400 text-xs mt-1.5 font-medium tracking-wide uppercase">
+            The Future of Intelligent Workplaces
           </p>
         </div>
 
-        {/* Card */}
-        <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-8 shadow-2xl">
-          <h2 className="text-xl font-semibold text-white mb-1">Welcome back</h2>
-          <p className="text-slate-400 text-sm mb-6">Sign in to your account</p>
+        {/* Glassmorphic Login Card */}
+        <div className="glass-card rounded-3xl p-8 border border-white/10 shadow-2xl relative overflow-hidden">
+          {/* Subtle card glow overlay */}
+          <div className="absolute -top-32 -right-32 w-64 h-64 bg-violet-500/5 rounded-full blur-3xl pointer-events-none" />
 
-          {/* Error */}
+          <h2 className="text-2xl font-bold text-white font-display">Welcome back</h2>
+          <p className="text-slate-400 text-xs mt-1 mb-6">Sign in to access your dashboard</p>
+
+          {/* Error Banner */}
           {error && (
-            <div className="flex items-start gap-2 bg-rose-500/10 border border-rose-500/30 text-rose-400 rounded-xl px-4 py-3 mb-5 text-sm">
-              <AlertCircle size={16} className="shrink-0 mt-0.5" />
+            <div className="flex items-start gap-2.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl px-4 py-3 mb-5 text-xs">
+              <AlertCircle size={15} className="shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email */}
+            {/* Email Input */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                Email address
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
+                Email Address
               </label>
               <input
                 id="login-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@company.com"
+                placeholder="name@company.com"
                 required
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white
-                  placeholder-slate-500 text-sm focus:outline-none focus:border-violet-500 focus:ring-1
-                  focus:ring-violet-500/30 transition-all"
+                className="w-full glass-input rounded-xl px-4 py-2.5 text-white placeholder-slate-500 text-sm"
               />
             </div>
 
-            {/* Password */}
+            {/* Password Input */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
                 Password
               </label>
               <div className="relative">
@@ -121,68 +127,77 @@ export default function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 pr-11 text-white
-                    placeholder-slate-500 text-sm focus:outline-none focus:border-violet-500 focus:ring-1
-                    focus:ring-violet-500/30 transition-all"
+                  className="w-full glass-input rounded-xl px-4 py-2.5 pr-11 text-white placeholder-slate-500 text-sm"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
                 >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
             </div>
 
-            {/* Submit */}
+            {/* Sign In Button */}
             <button
               id="login-submit"
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500
-                hover:to-indigo-500 text-white font-semibold py-2.5 rounded-xl transition-all
+              className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500
+                hover:to-fuchsia-500 text-white font-semibold py-2.5 rounded-xl transition-all duration-300
                 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2
-                shadow-lg shadow-violet-500/20 mt-2"
+                shadow-lg shadow-violet-500/25 mt-6 hover:shadow-violet-500/35 hover:scale-[1.01]"
             >
               {loading ? (
                 <>
-                  <Loader2 size={16} className="animate-spin" />
-                  Signing in...
+                  <Loader2 size={15} className="animate-spin" />
+                  Authenticating...
                 </>
               ) : (
-                "Sign in"
+                "Sign In"
               )}
             </button>
           </form>
 
-          {/* Demo users */}
-          <div className="mt-6">
-            <p className="text-xs text-slate-500 text-center mb-3">
-              — Quick Demo Login —
-            </p>
-            <div className="grid grid-cols-2 gap-2">
+          {/* Quick Demo Logins Section */}
+          <div className="mt-8">
+            <div className="relative flex py-2 items-center">
+              <div className="flex-grow border-t border-white/5"></div>
+              <span className="flex-shrink mx-4 text-[10px] text-slate-500 font-semibold uppercase tracking-wider">
+                Quick Demo Accounts
+              </span>
+              <div className="flex-grow border-t border-white/5"></div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 mt-4">
               {DEMO_USERS.map((u) => (
                 <button
                   key={u.label}
                   id={`demo-${u.label.toLowerCase()}`}
                   onClick={() => fillDemo(u.email)}
-                  className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs
-                    text-slate-300 hover:border-violet-500 hover:text-violet-400 transition-all text-left"
+                  className="px-3.5 py-2.5 rounded-xl bg-slate-950/45 border border-white/5 text-left
+                    hover:border-violet-500/30 hover:bg-slate-900/60 transition-all duration-200 group"
                 >
-                  <div className="font-medium">{u.label}</div>
-                  <div className="text-slate-500 truncate">{u.email}</div>
+                  <div className="flex items-center gap-1.5">
+                    <span className={`w-1.5 h-1.5 rounded-full bg-gradient-to-r ${u.color}`} />
+                    <span className="font-semibold text-xs text-slate-200 group-hover:text-violet-400 transition-colors">
+                      {u.label}
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 truncate mt-0.5">{u.email}</div>
                 </button>
               ))}
             </div>
-            <p className="text-xs text-slate-600 text-center mt-2">
-              All demo passwords: <span className="text-slate-500 font-mono">HrMs@2026!Sec</span>
-            </p>
+
+            <div className="text-center mt-4 text-[10px] text-slate-500 font-medium">
+              Demo passwords: <span className="text-violet-400 font-mono">HrMs@2026!Sec</span>
+            </div>
           </div>
         </div>
 
-        <p className="text-center text-xs text-slate-600 mt-4">
-          Secured with JWT · Built for Hackathon 2026
+        <p className="text-center text-[10px] text-slate-600 mt-6 tracking-wide">
+          Secured with JWT and Cryptographic Hashing · Version 2.0
         </p>
       </div>
     </div>
