@@ -14,11 +14,11 @@ import {
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 
-const COLORS = ["#10b981", "#0ea5e9", "#f59e0b", "#ef4444", "#3b82f6", "#06b6d4", "#ec4899"];
+const COLORS = ["#8b5cf6", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#06b6d4", "#ec4899"];
 const TOOLTIP_STYLE = {
   contentStyle: { background: "rgba(15, 23, 42, 0.95)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: 12, backdropFilter: "blur(8px)" },
   labelStyle: { color: "#fff", fontWeight: "bold", fontFamily: "var(--font-display)" },
-  itemStyle: { color: "#34d399", fontSize: "12px", fontFamily: "var(--font-sans)" },
+  itemStyle: { color: "#c084fc", fontSize: "12px", fontFamily: "var(--font-sans)" },
 };
 
 // ─── Reusable sub-components ─────────────────────────────────────────────────
