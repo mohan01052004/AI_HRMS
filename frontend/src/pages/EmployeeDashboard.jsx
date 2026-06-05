@@ -17,7 +17,7 @@ import api from "../api/axios";
 const TOOLTIP_STYLE = {
   contentStyle: { background: "rgba(15, 23, 42, 0.95)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: 12, backdropFilter: "blur(8px)" },
   labelStyle: { color: "#fff", fontWeight: "bold", fontFamily: "var(--font-display)" },
-  itemStyle: { color: "#c084fc", fontSize: "12px", fontFamily: "var(--font-sans)" },
+  itemStyle: { color: "#34d399", fontSize: "12px", fontFamily: "var(--font-sans)" },
 };
 
 const STATUS_COLORS = {
