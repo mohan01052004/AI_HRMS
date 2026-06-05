@@ -1,13 +1,15 @@
 /**
- * components/Navbar.jsx — Top navbar with working notifications, profile & settings (Redesigned with Glassmorphism)
+ * components/Navbar.jsx — Top navbar with working notifications, profile, settings, and Theme Switcher
  */
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useRealtime } from "../context/RealtimeContext";
+import { useTheme } from "../context/ThemeContext";
 import {
   Bell, ChevronDown, LogOut, User, Settings,
   CheckCheck, Info, AlertTriangle, CalendarClock, Menu,
+  Sun, Moon,
 } from "lucide-react";
 
 const PAGE_TITLES = {
@@ -26,6 +28,7 @@ const PAGE_TITLES = {
 export default function Navbar({ onHamburgerClick }) {
   const { user, logout } = useAuth();
   const { notifications, unreadCount, markAllRead, status: wsStatus } = useRealtime();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -96,6 +99,17 @@ export default function Navbar({ onHamburgerClick }) {
       {/* Right — Actions */}
       <div className="flex items-center gap-3">
 
+        {/* ── Theme Toggle Button ── */}
+        <button
+          onClick={toggleTheme}
+          className="w-9 h-9 rounded-xl bg-slate-900/60 border border-white/5 flex items-center
+            justify-center text-slate-400 hover:text-white hover:border-violet-500/30 transition-all duration-300"
+          aria-label="Toggle theme mode"
+          title={theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
+        >
+          {theme === "light" ? <Moon size={15} /> : <Sun size={15} />}
+        </button>
+
         {/* ── Notification Bell ── */}
         <div ref={bellRef} className="relative">
           <button
@@ -148,8 +162,8 @@ export default function Navbar({ onHamburgerClick }) {
                 {notifications.length === 0 ? (
                   <div className="py-10 text-center">
                     <Bell size={22} className="text-slate-700 mx-auto mb-2" />
-                    <p className="text-slate-500 text-xs font-medium">All caught up!</p>
-                    <p className="text-slate-600 text-[10px] mt-0.5">Real-time alerts will appear here.</p>
+                    <p className="text-slate-500 text-xs font-medium font-sans">All caught up!</p>
+                    <p className="text-slate-600 text-[10px] mt-0.5 font-sans">Real-time alerts will appear here.</p>
                   </div>
                 ) : (
                   notifications.slice(0, 20).map((n) => (
@@ -168,7 +182,7 @@ export default function Navbar({ onHamburgerClick }) {
                         <p className={`text-xs font-semibold leading-snug ${!n.read ? "text-white" : "text-slate-300"}`}>
                           {n.title}
                         </p>
-                        <p className="text-[9px] text-slate-500 mt-1 font-medium">
+                        <p className="text-[9px] text-slate-500 mt-1 font-medium font-sans">
                           {new Date(n.timestamp).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
                         </p>
                       </div>
@@ -182,7 +196,7 @@ export default function Navbar({ onHamburgerClick }) {
 
               {/* Footer */}
               <div className="border-t border-white/5 px-4 py-2.5 bg-slate-950/30">
-                <p className="text-[10px] text-slate-500 text-center font-medium">
+                <p className="text-[10px] text-slate-500 text-center font-medium font-sans">
                   Notifications are cleared on logout
                 </p>
               </div>
@@ -200,7 +214,7 @@ export default function Navbar({ onHamburgerClick }) {
           >
             <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-500
               flex items-center justify-center shrink-0 shadow-md shadow-violet-500/10">
-              <span className="text-xs font-bold text-white">
+              <span className="text-xs font-bold text-white font-sans">
                 {user?.name?.charAt(0)?.toUpperCase()}
               </span>
             </div>
@@ -220,14 +234,14 @@ export default function Navbar({ onHamburgerClick }) {
               <div className="px-4 py-3 border-b border-white/5 mb-1.5 bg-slate-950/20">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-500
-                    flex items-center justify-center shrink-0">
-                    <span className="text-xs font-bold text-white">
+                    flex items-center justify-center shrink-0 shadow-md shadow-violet-500/10">
+                    <span className="text-xs font-bold text-white font-sans">
                       {user?.name?.charAt(0)?.toUpperCase()}
                     </span>
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs text-white font-bold truncate leading-tight font-display">{user?.name}</p>
-                    <p className="text-[10px] text-slate-500 truncate mt-0.5">{user?.email}</p>
+                    <p className="text-[10px] text-slate-500 truncate mt-0.5 font-sans">{user?.email}</p>
                   </div>
                 </div>
                 <span className="mt-2 inline-block text-[9px] px-2 py-0.5 rounded-full

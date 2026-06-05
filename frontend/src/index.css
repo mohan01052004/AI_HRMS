@@ -4,6 +4,19 @@
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   
+  /* Map Tailwind colors to dynamic CSS variables for theme switching */
+  --color-slate-950: var(--bg-page);
+  --color-slate-900: var(--bg-card);
+  --color-slate-800: var(--border-card);
+  --color-slate-700: var(--border-highlight);
+  --color-slate-400: var(--text-sub);
+  --color-slate-500: var(--text-muted);
+  --color-slate-200: var(--text-headers);
+  
+  --color-white: var(--text-main);
+  /* Keep slate-50 as a persistent light white for button text overlays in both modes */
+  --color-slate-50: #fafafa;
+
   --animate-blob: float-blob 12s infinite alternate;
   --animate-blob-reverse: float-blob-reverse 15s infinite alternate;
   --animate-pulse-slow: pulse-slow 6s ease-in-out infinite;
@@ -44,11 +57,11 @@
 
 @layer utilities {
   .glass-card {
-    background: rgba(15, 23, 42, 0.45);
+    background: var(--bg-card);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    border: 1px solid var(--border-card);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25);
   }
 
   .glass-card-hover {
@@ -56,32 +69,33 @@
   }
   .glass-card-hover:hover {
     transform: translateY(-4px);
-    background: rgba(15, 23, 42, 0.6);
+    background: var(--bg-card-hover);
     border-color: rgba(139, 92, 246, 0.25);
     box-shadow: 0 12px 40px 0 rgba(139, 92, 246, 0.08);
   }
 
   .glass-panel {
-    background: rgba(15, 23, 42, 0.65);
+    background: var(--bg-panel);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border-color: rgba(255, 255, 255, 0.05);
+    border-color: var(--border-card);
   }
 
   .glass-input {
-    background: rgba(15, 23, 42, 0.35);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--bg-input);
+    border: 1px solid var(--border-card);
+    color: var(--text-main);
     transition: all 0.2s ease;
   }
   .glass-input:focus {
-    background: rgba(15, 23, 42, 0.55);
+    background: var(--bg-input-focus);
     border-color: rgba(139, 92, 246, 0.5);
     box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.15);
     outline: none;
   }
 
   .text-glow-violet {
-    text-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+    text-shadow: 0 0 20px rgba(139, 92, 246, 0.25);
   }
   
   .bg-radial-glow {
@@ -90,6 +104,42 @@
 }
 
 @layer base {
+  :root {
+    /* DEFAULT: Dark Theme (Slate/Violet Obsidian) */
+    --bg-page: #030712;
+    --bg-card: rgba(15, 23, 42, 0.45);
+    --bg-card-hover: rgba(15, 23, 42, 0.6);
+    --bg-panel: rgba(15, 23, 42, 0.65);
+    --bg-input: rgba(15, 23, 42, 0.35);
+    --bg-input-focus: rgba(15, 23, 42, 0.55);
+    
+    --border-card: rgba(255, 255, 255, 0.06);
+    --border-highlight: rgba(255, 255, 255, 0.1);
+    
+    --text-main: #f3f4f6;
+    --text-sub: #a1a1aa;
+    --text-muted: #52525b;
+    --text-headers: #e4e4e7;
+  }
+
+  html.light {
+    /* LIGHT: Clean Sophisticated Slate/White Theme */
+    --bg-page: #f8fafc;
+    --bg-card: rgba(255, 255, 255, 0.85);
+    --bg-card-hover: rgba(255, 255, 255, 0.95);
+    --bg-panel: rgba(255, 255, 255, 0.9);
+    --bg-input: rgba(255, 255, 255, 0.7);
+    --bg-input-focus: rgba(255, 255, 255, 0.9);
+    
+    --border-card: rgba(15, 23, 42, 0.08);
+    --border-highlight: rgba(15, 23, 42, 0.15);
+    
+    --text-main: #0f172a;
+    --text-sub: #475569;
+    --text-muted: #64748b;
+    --text-headers: #1e293b;
+  }
+
   * {
     box-sizing: border-box;
   }
@@ -98,12 +148,13 @@
     height: 100%;
     margin: 0;
     padding: 0;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   body {
     font-family: var(--font-sans);
-    background-color: #030712;
-    color: #f3f4f6;
+    background-color: var(--bg-page);
+    color: var(--text-main);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
@@ -112,6 +163,7 @@
   h1, h2, h3, h4, h5, h6, .font-display {
     font-family: var(--font-display);
     letter-spacing: -0.02em;
+    color: var(--text-headers);
   }
 
   /* Custom styled scrollbars */
@@ -123,7 +175,7 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(139, 92, 246, 0.15);
     border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:hover {
