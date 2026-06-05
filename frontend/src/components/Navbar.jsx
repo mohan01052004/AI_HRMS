@@ -73,7 +73,7 @@ export default function Navbar({ onHamburgerClick }) {
   };
 
   return (
-    <header className="h-16 bg-slate-950/45 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-4 sm:px-6 shrink-0 relative z-30">
+    <header className="h-16 bg-slate-900 backdrop-blur-xl border-b border-slate-800 flex items-center justify-between px-4 sm:px-6 shrink-0 relative z-30">
       {/* Left — Hamburger (mobile) + Page title */}
       <div className="flex items-center gap-3">
         {/* Mobile hamburger */}

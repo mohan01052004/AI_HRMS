@@ -58,8 +58,8 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
   const sidebarContent = (
     <aside
       className={`
-        relative flex flex-col bg-slate-950/70 border-r border-white/5
-        backdrop-blur-xl transition-all duration-300 ease-in-out shrink-0 h-full
+        relative flex flex-col bg-slate-900 border-r border-slate-800
+        transition-all duration-300 ease-in-out shrink-0 h-full
         ${collapsed ? "w-16" : "w-60"}
       `}
     >

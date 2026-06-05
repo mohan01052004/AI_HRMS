@@ -17,6 +17,11 @@
   /* Keep slate-50 as a persistent light white for button text overlays in both modes */
   --color-slate-50: #fafafa;
 
+  /* Dynamic Active Violet Accent Mapping */
+  --color-violet-300: var(--accent-text);
+  --color-violet-600: var(--accent-bg-grad);
+  --color-violet-500: var(--accent-border);
+
   --animate-blob: float-blob 12s infinite alternate;
   --animate-blob-reverse: float-blob-reverse 15s infinite alternate;
   --animate-pulse-slow: pulse-slow 6s ease-in-out infinite;
@@ -107,9 +112,9 @@
   :root {
     /* DEFAULT: Dark Theme (Slate/Violet Obsidian) */
     --bg-page: #030712;
-    --bg-card: rgba(15, 23, 42, 0.45);
-    --bg-card-hover: rgba(15, 23, 42, 0.6);
-    --bg-panel: rgba(15, 23, 42, 0.65);
+    --bg-card: rgba(15, 23, 42, 0.7);
+    --bg-card-hover: rgba(15, 23, 42, 0.85);
+    --bg-panel: rgba(15, 23, 42, 0.85);
     --bg-input: rgba(15, 23, 42, 0.35);
     --bg-input-focus: rgba(15, 23, 42, 0.55);
     
@@ -120,24 +125,34 @@
     --text-sub: #a1a1aa;
     --text-muted: #52525b;
     --text-headers: #e4e4e7;
+
+    /* Violet Accent Dark Mode */
+    --accent-text: #c084fc;
+    --accent-bg-grad: #7c3aed;
+    --accent-border: #8b5cf6;
   }
 
   html.light {
     /* LIGHT: Clean Sophisticated Slate/White Theme */
-    --bg-page: #f8fafc;
-    --bg-card: rgba(255, 255, 255, 0.85);
-    --bg-card-hover: rgba(255, 255, 255, 0.95);
-    --bg-panel: rgba(255, 255, 255, 0.9);
-    --bg-input: rgba(255, 255, 255, 0.7);
-    --bg-input-focus: rgba(255, 255, 255, 0.9);
+    --bg-page: #f1f5f9; /* Soft grey slate background */
+    --bg-card: #ffffff; /* Solid clean white card backgrounds */
+    --bg-card-hover: #fafafa;
+    --bg-panel: #ffffff; /* Solid white sidebars/navbars */
+    --bg-input: #ffffff;
+    --bg-input-focus: #ffffff;
     
-    --border-card: rgba(15, 23, 42, 0.08);
-    --border-highlight: rgba(15, 23, 42, 0.15);
+    --border-card: #e2e8f0; /* Crisp Slate-200 border lines */
+    --border-highlight: #cbd5e1;
     
     --text-main: #0f172a;
     --text-sub: #475569;
     --text-muted: #64748b;
     --text-headers: #1e293b;
+
+    /* Violet Accent Light Mode (Readability & Contrast) */
+    --accent-text: #6d28d9; /* Dark readable violet */
+    --accent-bg-grad: #f3e8ff; /* Soft lavender background */
+    --accent-border: #c084fc; /* Purple border */
   }
 
   * {
