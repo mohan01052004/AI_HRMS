@@ -25,11 +25,17 @@ export function RealtimeProvider({ children }) {
     let toastType = "default";
 
     if (event === "attendance_update") {
+      // Admin users should not receive clock-in/clock-out notifications
+      if (user?.role === "management_admin") return;
+
+      const isOwnPunch = data.employee_name?.toLowerCase().trim() === user?.name?.toLowerCase().trim();
+      if (!isOwnPunch) return;
+
       if (data.action === "clock_in") {
-        title = `${data.employee_name} clocked in`;
+        title = `Clocked in at ${data.time || ""}`.trim();
         toastType = "success";
       } else if (data.action === "clock_out") {
-        title = `${data.employee_name} clocked out (${data.hours_worked}h)`;
+        title = `Clocked out — ${data.hours_worked}h worked today`;
         toastType = "default";
       }
     } else if (event === "leave_update") {
@@ -70,7 +76,7 @@ export function RealtimeProvider({ children }) {
     // Fire any registered listeners for this event
     const handlers = listenersRef.current[event] || [];
     handlers.forEach((fn) => fn(data));
-  }, []);
+  }, [user]);
 
   const { status } = useWebSocket({
     token,

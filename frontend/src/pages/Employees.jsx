@@ -20,6 +20,7 @@ import {
   AlertCircle, ChevronLeft, ChevronRight, RefreshCw,
   Building2, Phone, Mail, Calendar, DollarSign, MapPin,
   UserCheck, Filter, Eye, User, Check, LayoutDashboard,
+  Hash,
 } from "lucide-react";
 
 
@@ -472,6 +473,11 @@ export default function Employees() {
                         <Avatar name={emp.name} />
                         <div className="min-w-0">
                           <p className="font-semibold text-white truncate">{emp.name}</p>
+                          {emp.employee_code && (
+                            <span className="text-[10px] font-mono text-violet-400/80 bg-violet-500/10 border border-violet-500/20 px-1.5 py-0.5 rounded">
+                              {emp.employee_code}
+                            </span>
+                          )}
                           <p className="text-slate-500 text-xs flex items-center gap-1 mt-0.5">
                             <Mail size={10} />
                             {emp.email}
@@ -986,6 +992,7 @@ export default function Employees() {
 
               <div className="grid grid-cols-1 gap-3 text-sm">
                 {[
+                  { icon: Hash,     label: "Employee Code", val: showDetail.employee_code },
                   { icon: Mail,     label: "Email",       val: showDetail.email },
                   { icon: Phone,    label: "Phone",       val: showDetail.phone },
                   { icon: User,     label: "Gender",      val: showDetail.gender ? (showDetail.gender.charAt(0).toUpperCase() + showDetail.gender.slice(1)) : null },

@@ -28,6 +28,7 @@ class AttendanceOut(BaseModel):
     clock_out: Optional[time] = None
     status: AttendanceStatus
     hours_worked: float
+    clock_history: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

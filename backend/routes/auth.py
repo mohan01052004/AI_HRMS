@@ -100,26 +100,38 @@ async def login_json(request: Request, payload: dict, db: AsyncSession = Depends
 async def change_password(
     payload: dict,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
 ):
-    """Change user password after validating current password."""
+    """Change user password — authenticates via email + current_password directly (no JWT required).
+    This allows password change even when the short-lived JWT has expired.
+    """
+    email = payload.get("email")
     current_password = payload.get("current_password")
     new_password = payload.get("new_password")
 
-    if not current_password or not new_password:
+    if not email or not current_password or not new_password:
         raise HTTPException(
             status_code=400,
-            detail="Current password and new password are required.",
+            detail="Email, current password, and new password are required.",
         )
 
-    if not verify_password(current_password, current_user.password_hash):
+    # Fetch user directly from DB by email
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+
+    if not user:
         raise HTTPException(
             status_code=400,
             detail="Incorrect current password.",
         )
 
-    current_user.password_hash = hash_password(new_password)
-    db.add(current_user)
+    if not verify_password(current_password, user.password_hash):
+        raise HTTPException(
+            status_code=400,
+            detail="Incorrect current password.",
+        )
+
+    user.password_hash = hash_password(new_password)
+    db.add(user)
     await db.flush()
     return {"message": "Password changed successfully."}
 

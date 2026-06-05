@@ -31,24 +31,24 @@ import { useAuth } from "../context/AuthContext";
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const MONTHS = [
-  "January","February","March","April","May","June",
-  "July","August","September","October","November","December",
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
 ];
 
 const STATUS_CFG = {
-  present:        { label: "Present",       color: "#10b981", bg: "bg-emerald-500",   text: "text-emerald-400",  ring: "ring-emerald-500/30", icon: CheckCircle2 },
-  late:           { label: "Late",          color: "#f59e0b", bg: "bg-amber-500",     text: "text-amber-400",    ring: "ring-amber-500/30",   icon: AlertTriangle },
-  absent:         { label: "Absent",        color: "#f43f5e", bg: "bg-rose-500",      text: "text-rose-400",     ring: "ring-rose-500/30",    icon: XCircle },
-  half_day:       { label: "Half Day",      color: "#8b5cf6", bg: "bg-violet-500",    text: "text-violet-400",   ring: "ring-violet-500/30",  icon: Timer },
-  work_from_home: { label: "WFH",           color: "#3b82f6", bg: "bg-blue-500",      text: "text-blue-400",     ring: "ring-blue-500/30",    icon: CheckCircle2 },
-  holiday:        { label: "Holiday",       color: "#64748b", bg: "bg-slate-500",     text: "text-slate-400",    ring: "ring-slate-500/30",   icon: Calendar },
-  not_started:    { label: "Not Started",   color: "#475569", bg: "bg-slate-600",     text: "text-slate-400",    ring: "ring-slate-500/20",   icon: Clock },
+  present: { label: "Present", color: "#10b981", bg: "bg-emerald-500", text: "text-emerald-400", ring: "ring-emerald-500/30", icon: CheckCircle2 },
+  late: { label: "Late", color: "#f59e0b", bg: "bg-amber-500", text: "text-amber-400", ring: "ring-amber-500/30", icon: AlertTriangle },
+  absent: { label: "Absent", color: "#f43f5e", bg: "bg-rose-500", text: "text-rose-400", ring: "ring-rose-500/30", icon: XCircle },
+  half_day: { label: "Half Day", color: "#8b5cf6", bg: "bg-violet-500", text: "text-violet-400", ring: "ring-violet-500/30", icon: Timer },
+  work_from_home: { label: "WFH", color: "#3b82f6", bg: "bg-blue-500", text: "text-blue-400", ring: "ring-blue-500/30", icon: CheckCircle2 },
+  holiday: { label: "Holiday", color: "#64748b", bg: "bg-slate-500", text: "text-slate-400", ring: "ring-slate-500/30", icon: Calendar },
+  not_started: { label: "Not Started", color: "#475569", bg: "bg-slate-600", text: "text-slate-400", ring: "ring-slate-500/20", icon: Clock },
 };
 
 // ─── Tiny helpers ─────────────────────────────────────────────────────────────
 
 const fmtMonth = (y, m) => `${y}-${String(m).padStart(2, "0")}`;
-const today    = () => new Date();
+const today = () => new Date();
 
 function useNow() {
   const [now, setNow] = useState(new Date());
@@ -78,7 +78,7 @@ function StatCard({ label, value, sub, colorClass, icon: Icon }) {
 
 // ─── Calendar Heatmap ─────────────────────────────────────────────────────────
 
-function CalendarHeatmap({ year, month, records }) {
+function CalendarHeatmap({ year, month, records, joiningDate }) {
   // Build a map: day → status
   const dayMap = {};
   records.forEach(r => {
@@ -100,22 +100,26 @@ function CalendarHeatmap({ year, month, records }) {
   for (let d = 1; d <= daysInMonth; d++) {
     const dayOfWeek = new Date(year, month - 1, d).getDay();
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-    const isFuture  = isCurrentMonth && d > todayDate.getDate();
-    const isToday   = isCurrentMonth && d === todayDate.getDate();
-    const status    = dayMap[d];
+    const isFuture = isCurrentMonth && d > todayDate.getDate();
+    const isToday = isCurrentMonth && d === todayDate.getDate();
+    const status = dayMap[d];
+
+    const cellDateStr = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const isBeforeJoining = joiningDate && cellDateStr < joiningDate;
 
     let bg = "bg-slate-800/50";
     let title = isWeekend ? "Weekend" : isFuture ? "Future" : "No record";
 
-    if (isWeekend)       bg = "bg-slate-800/30";
-    else if (isFuture)   bg = "bg-slate-800/20";
-    else if (status === "present")        { bg = "bg-emerald-500/80"; title = "Present"; }
-    else if (status === "late")           { bg = "bg-amber-500/80";   title = "Late"; }
-    else if (status === "absent")         { bg = "bg-rose-500/80";    title = "Absent"; }
-    else if (status === "half_day")       { bg = "bg-violet-500/80";  title = "Half Day"; }
-    else if (status === "work_from_home") { bg = "bg-blue-500/80";    title = "WFH"; }
-    else if (status === "holiday")        { bg = "bg-slate-500/70";   title = "Holiday"; }
-    else if (!isFuture && !isWeekend)     { bg = "bg-rose-900/40";    title = "Absent"; }
+    if (isBeforeJoining) { bg = "bg-slate-800/10"; title = "Not Joined"; }
+    else if (isWeekend) bg = "bg-slate-800/30";
+    else if (isFuture) bg = "bg-slate-800/20";
+    else if (status === "present") { bg = "bg-emerald-500/80"; title = "Present"; }
+    else if (status === "late") { bg = "bg-amber-500/80"; title = "Late"; }
+    else if (status === "absent") { bg = "bg-rose-500/80"; title = "Absent"; }
+    else if (status === "half_day") { bg = "bg-violet-500/80"; title = "Half Day"; }
+    else if (status === "work_from_home") { bg = "bg-blue-500/80"; title = "WFH"; }
+    else if (status === "holiday") { bg = "bg-slate-500/70"; title = "Holiday"; }
+    else if (!isFuture && !isWeekend) { bg = "bg-rose-900/40"; title = "Absent"; }
 
     cells.push(
       <div
@@ -124,7 +128,7 @@ function CalendarHeatmap({ year, month, records }) {
         className={`aspect-square rounded-md ${bg} flex items-center justify-center
           text-xs font-medium transition-transform hover:scale-110 cursor-default
           ${isToday ? "ring-2 ring-violet-400 ring-offset-1 ring-offset-slate-900" : ""}
-          ${isWeekend || isFuture ? "opacity-40" : ""}`}
+          ${isWeekend || isFuture || isBeforeJoining ? "opacity-40" : ""}`}
       >
         <span className={isToday ? "text-violet-300 font-bold" : "text-slate-400 text-[10px]"}>
           {d}
@@ -137,7 +141,7 @@ function CalendarHeatmap({ year, month, records }) {
     <div>
       {/* Weekday headers */}
       <div className="grid grid-cols-7 gap-1 mb-1">
-        {["S","M","T","W","T","F","S"].map((d, i) => (
+        {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
           <div key={i} className="text-center text-slate-600 text-[10px] font-medium py-1">{d}</div>
         ))}
       </div>
@@ -147,10 +151,11 @@ function CalendarHeatmap({ year, month, records }) {
       <div className="flex flex-wrap items-center gap-3 mt-3 pt-3 border-t border-slate-800">
         {[
           { color: "bg-emerald-500", label: "Present" },
-          { color: "bg-amber-500",   label: "Late" },
-          { color: "bg-rose-500",    label: "Absent" },
-          { color: "bg-violet-500",  label: "Half Day" },
-          { color: "bg-blue-500",    label: "WFH" },
+          { color: "bg-amber-500", label: "Late" },
+          { color: "bg-rose-500", label: "Absent" },
+          { color: "bg-violet-500", label: "Half Day" },
+          { color: "bg-blue-500", label: "WFH" },
+          { color: "bg-slate-800/30", label: "Not Joined" },
         ].map(({ color, label }) => (
           <span key={label} className="flex items-center gap-1.5 text-xs text-slate-500">
             <span className={`w-2.5 h-2.5 rounded-sm ${color}`} />
@@ -168,8 +173,17 @@ function ClockButton({ todayData, loading, onClockIn, onClockOut }) {
   const now = useNow();
   const status = todayData?.status || "not_started";
   const cfg = STATUS_CFG[status] || STATUS_CFG.not_started;
-  const canIn  = todayData?.can_clock_in  ?? true;
+  const canIn = todayData?.can_clock_in ?? true;
   const canOut = todayData?.can_clock_out ?? false;
+
+  let punchHistory = [];
+  if (todayData?.clock_history) {
+    try {
+      punchHistory = JSON.parse(todayData.clock_history);
+    } catch (e) {
+      console.error(e);
+    }
+  }
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center">
@@ -188,24 +202,53 @@ function ClockButton({ todayData, loading, onClockIn, onClockOut }) {
         {cfg.label}
       </div>
 
+      {/* Progress bar towards 9 hours daily target */}
+      {todayData?.hours_worked > 0 && (
+        <div className="max-w-xs mx-auto mb-6">
+          <div className="flex justify-between text-xs text-slate-400 mb-1.5 font-medium">
+            <span>Daily Progress</span>
+            <span>{todayData.hours_worked.toFixed(2)}h / 9.00h</span>
+          </div>
+          <div className="h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700/50">
+            <div
+              className={`h-full rounded-full transition-all duration-500 bg-gradient-to-r ${
+                todayData.hours_worked >= 9.0
+                  ? "from-emerald-600 to-emerald-400"
+                  : "from-violet-600 to-violet-400"
+              }`}
+              style={{ width: `${Math.min((todayData.hours_worked / 9.0) * 100, 100)}%` }}
+            />
+          </div>
+          {todayData.hours_worked >= 9.0 ? (
+            <p className="text-[10px] text-emerald-400 font-bold uppercase mt-1.5 tracking-wider">
+              Daily quota completed!
+            </p>
+          ) : (
+            <p className="text-[10px] text-slate-500 font-medium mt-1.5">
+              Need {(9.0 - todayData.hours_worked).toFixed(2)}h more for a full day
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Clock In / Out times */}
       {(todayData?.clock_in || todayData?.clock_out) && (
         <div className="flex justify-center gap-8 mb-6 text-sm">
           {todayData.clock_in && (
             <div>
-              <p className="text-slate-500 text-xs mb-0.5">Clock In</p>
+              <p className="text-slate-500 text-xs mb-0.5">First Clock In</p>
               <p className="text-emerald-400 font-semibold font-mono">{todayData.clock_in}</p>
             </div>
           )}
           {todayData.clock_out && (
             <div>
-              <p className="text-slate-500 text-xs mb-0.5">Clock Out</p>
+              <p className="text-slate-500 text-xs mb-0.5">Last Clock Out</p>
               <p className="text-rose-400 font-semibold font-mono">{todayData.clock_out}</p>
             </div>
           )}
           {todayData.hours_worked > 0 && (
             <div>
-              <p className="text-slate-500 text-xs mb-0.5">Hours</p>
+              <p className="text-slate-500 text-xs mb-0.5">Hours Worked</p>
               <p className="text-violet-400 font-semibold font-mono">
                 {todayData.hours_worked.toFixed(2)}h
               </p>
@@ -257,6 +300,34 @@ function ClockButton({ todayData, loading, onClockIn, onClockOut }) {
           Clocking in now will mark you as <strong className="ml-1">Late</strong>
         </p>
       )}
+
+      {/* Punch History Timeline */}
+      {punchHistory.length > 0 && (
+        <div className="max-w-xs mx-auto mt-6 pt-5 border-t border-slate-800">
+          <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-3 text-left">
+            Punch History
+          </p>
+          <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
+            {punchHistory.map((punch, idx) => (
+              <div
+                key={idx}
+                className="flex items-center justify-between text-xs bg-slate-950/40 border border-slate-800/60 rounded-xl px-3 py-2 font-mono"
+              >
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                  <span className="text-slate-300">In: {punch.in}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${punch.out ? "bg-rose-400" : "bg-violet-400 animate-pulse"}`} />
+                  <span className={punch.out ? "text-slate-300" : "text-violet-400 font-semibold"}>
+                    {punch.out ? `Out: ${punch.out}` : "Active"}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -268,25 +339,25 @@ export default function Attendance() {
   const isAdminOrManager = hasRole("management_admin", "senior_manager", "hr_recruiter");
 
   // ── Shared state ────────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab]       = useState(isAdminOrManager ? "admin" : "employee");
+  const [activeTab, setActiveTab] = useState("employee");
   const [actionLoading, setActionLoading] = useState(false);
-  const [refreshKey, setRefreshKey]     = useState(0);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // ── Employee view state ─────────────────────────────────────────────────────
-  const [todayData, setTodayData]       = useState(null);
+  const [todayData, setTodayData] = useState(null);
   const [monthRecords, setMonthRecords] = useState([]);
   const [monthlySummary, setMonthlySummary] = useState(null);
-  const [empLoading, setEmpLoading]     = useState(true);
+  const [empLoading, setEmpLoading] = useState(true);
 
   const now = new Date();
-  const [viewYear,  setViewYear]  = useState(now.getFullYear());
+  const [viewYear, setViewYear] = useState(now.getFullYear());
   const [viewMonth, setViewMonth] = useState(now.getMonth() + 1);
 
   // ── Admin view state ────────────────────────────────────────────────────────
-  const [adminDate, setAdminDate]       = useState(now.toISOString().split("T")[0]);
-  const [adminData, setAdminData]       = useState(null);
-  const [departments, setDepartments]   = useState([]);
-  const [deptFilter, setDeptFilter]     = useState("");
+  const [adminDate, setAdminDate] = useState(now.toISOString().split("T")[0]);
+  const [adminData, setAdminData] = useState(null);
+  const [departments, setDepartments] = useState([]);
+  const [deptFilter, setDeptFilter] = useState("");
   const [adminLoading, setAdminLoading] = useState(false);
 
   // ── Fetch departments ───────────────────────────────────────────────────────
@@ -294,7 +365,7 @@ export default function Attendance() {
     if (!isAdminOrManager) return;
     api.get("/employees/departments")
       .then(r => setDepartments(r.data))
-      .catch(() => {});
+      .catch(() => { });
   }, [isAdminOrManager]);
 
   // ── Employee data fetching ──────────────────────────────────────────────────
@@ -396,8 +467,8 @@ export default function Attendance() {
     ]);
     const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
     a.href = url; a.download = `attendance_${adminDate}.csv`; a.click();
     URL.revokeObjectURL(url);
   };
@@ -405,12 +476,12 @@ export default function Attendance() {
   // ── Chart data ──────────────────────────────────────────────────────────────
   const chartData = monthlySummary
     ? [
-        { name: "Present", value: monthlySummary.present_days,  color: "#10b981" },
-        { name: "Late",    value: monthlySummary.late_days,      color: "#f59e0b" },
-        { name: "Absent",  value: monthlySummary.absent_days,    color: "#f43f5e" },
-        { name: "Half Day",value: monthlySummary.half_days,      color: "#8b5cf6" },
-        { name: "WFH",     value: monthlySummary.wfh_days || 0,  color: "#3b82f6" },
-      ]
+      { name: "Present", value: monthlySummary.present_days, color: "#10b981" },
+      { name: "Late", value: monthlySummary.late_days, color: "#f59e0b" },
+      { name: "Absent", value: monthlySummary.absent_days, color: "#f43f5e" },
+      { name: "Half Day", value: monthlySummary.half_days, color: "#8b5cf6" },
+      { name: "WFH", value: monthlySummary.wfh_days || 0, color: "#3b82f6" },
+    ]
     : [];
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -536,13 +607,12 @@ export default function Attendance() {
                       />
                     </div>
                   </div>
-                  <span className={`text-sm font-semibold ${
-                    monthlySummary.attendance_pct >= 90 ? "text-emerald-400"
-                    : monthlySummary.attendance_pct >= 75 ? "text-amber-400"
-                    : "text-rose-400"
-                  }`}>
+                  <span className={`text-sm font-semibold ${monthlySummary.attendance_pct >= 90 ? "text-emerald-400"
+                      : monthlySummary.attendance_pct >= 75 ? "text-amber-400"
+                        : "text-rose-400"
+                    }`}>
                     {monthlySummary.attendance_pct >= 90 ? "Excellent"
-                     : monthlySummary.attendance_pct >= 75 ? "Good" : "Needs Improvement"}
+                      : monthlySummary.attendance_pct >= 75 ? "Good" : "Needs Improvement"}
                   </span>
                 </div>
               )}
@@ -576,7 +646,7 @@ export default function Attendance() {
 
                 {empLoading
                   ? <div className="flex justify-center py-10"><Loader2 size={24} className="text-violet-500 animate-spin" /></div>
-                  : <CalendarHeatmap year={viewYear} month={viewMonth} records={monthRecords} />
+                  : <CalendarHeatmap year={viewYear} month={viewMonth} records={monthRecords} joiningDate={monthlySummary?.date_of_joining} />
                 }
               </div>
 
@@ -687,9 +757,9 @@ export default function Attendance() {
                 </thead>
                 <tbody className="divide-y divide-slate-800/40">
                   {adminLoading && (
-                    [1,2,3,4,5,6].map(i => (
+                    [1, 2, 3, 4, 5, 6].map(i => (
                       <tr key={i} className="border-b border-slate-800/50">
-                        {[1,2,3,4,5,6,7].map(j => (
+                        {[1, 2, 3, 4, 5, 6, 7].map(j => (
                           <td key={j} className="px-5 py-4">
                             <div className="h-4 bg-slate-800 rounded animate-pulse" style={{ width: `${50 + j * 7}%` }} />
                           </td>
@@ -717,7 +787,7 @@ export default function Attendance() {
                             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500
                               to-indigo-500 flex items-center justify-center shrink-0">
                               <span className="text-xs font-bold text-white">
-                                {rec.employee_name.split(" ").map(w => w[0]).slice(0,2).join("")}
+                                {rec.employee_name.split(" ").map(w => w[0]).slice(0, 2).join("")}
                               </span>
                             </div>
                             <span className="font-medium text-white text-sm">{rec.employee_name}</span>

@@ -139,6 +139,9 @@ async def init_db():
         await conn.execute(
             text("ALTER TABLE employees ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT TRUE")
         )
+        await conn.execute(
+            text("ALTER TABLE attendance ADD COLUMN IF NOT EXISTS clock_history TEXT")
+        )
 
 
 # ─── In-Memory TTL Cache ──────────────────────────────────────────────────────

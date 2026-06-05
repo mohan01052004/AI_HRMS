@@ -105,6 +105,17 @@ export default function Payroll() {
 
   // Trigger Bulk Payroll Generation
   const handleGeneratePayroll = async () => {
+    // Block generation for future months
+    const today = new Date();
+    const isFutureMonth =
+      selectedYear > today.getFullYear() ||
+      (selectedYear === today.getFullYear() && selectedMonth > today.getMonth() + 1);
+
+    if (isFutureMonth) {
+      setError(`Payroll cannot be generated for a future month (${MONTHS[selectedMonth]} ${selectedYear}).`);
+      return;
+    }
+
     setGenerating(true);
     setError("");
     try {
@@ -263,9 +274,17 @@ export default function Payroll() {
                   onChange={(e) => setSelectedMonth(parseInt(e.target.value, 10))}
                   className="bg-transparent text-sm text-white font-medium focus:outline-none"
                 >
-                  {MONTHS.slice(1).map((m, i) => (
-                    <option key={i + 1} value={i + 1} className="bg-slate-900">{m}</option>
-                  ))}
+                  {MONTHS.slice(1).map((m, i) => {
+                    const monthNum = i + 1;
+                    const isFuture =
+                      selectedYear > currentYear ||
+                      (selectedYear === currentYear && monthNum > currentMonth);
+                    return (
+                      <option key={monthNum} value={monthNum} className="bg-slate-900" disabled={isFuture}>
+                        {m}{isFuture ? " (future)" : ""}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 

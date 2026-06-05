@@ -54,7 +54,7 @@ export default function Login() {
     setPassword("HrMs@2026!Sec");
     setError("");
   };  return (
-    <div className="h-screen bg-[#030712] flex items-center justify-center p-4 relative overflow-hidden font-sans">
+    <div className="h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden font-sans">
       {/* Background drifting glow blobs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-violet-600/15 rounded-full blur-[120px] animate-blob" />

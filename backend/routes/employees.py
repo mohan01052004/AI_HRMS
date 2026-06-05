@@ -55,6 +55,35 @@ async def _get_employee_or_404(employee_id: int, db: AsyncSession) -> Employee:
     return emp
 
 
+# Role → employee-code prefix mapping
+_ROLE_PREFIX = {
+    "management_admin": "ADM",
+    "senior_manager":   "MGR",
+    "hr_recruiter":     "HR",
+    "employee":         "EMP",
+}
+
+async def _generate_employee_code(db: AsyncSession, role: str) -> str:
+    """Generate the next sequential code for the given role, e.g. EMP-0042."""
+    role_str = role.value if hasattr(role, "value") else str(role)
+    prefix = _ROLE_PREFIX.get(role_str, "EMP")
+    # Find the highest existing number for this prefix
+    result = await db.execute(
+        select(Employee.employee_code)
+        .where(Employee.employee_code.like(f"{prefix}-%"))
+    )
+    codes = result.scalars().all()
+    max_num = 0
+    for code in codes:
+        try:
+            num = int(code.split("-")[1])
+            if num > max_num:
+                max_num = num
+        except (IndexError, ValueError):
+            pass
+    return f"{prefix}-{str(max_num + 1).zfill(4)}"
+
+
 # ─── Department Endpoints ─────────────────────────────────────────────────────
 
 @router.get("/departments", response_model=List[DepartmentOut], summary="List all departments")
@@ -354,8 +383,20 @@ async def create_employee(
         user_id = new_user.id
 
     # Create employee record
+    target_role_for_code = payload.role or "employee"
+    if current_user.role == "hr_recruiter":
+        target_role_for_code = "employee"
+    elif payload.user_id:
+        user_res = await db.execute(select(User).where(User.id == payload.user_id))
+        existing_user = user_res.scalar_one_or_none()
+        if existing_user:
+            target_role_for_code = existing_user.role
+
+    emp_code = await _generate_employee_code(db, target_role_for_code)
+
     emp = Employee(
         user_id=user_id,
+        employee_code=emp_code,
         name=payload.name,
         email=payload.email,
         phone=payload.phone,

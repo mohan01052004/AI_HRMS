@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import api from "../api/axios";
 import {
   LayoutDashboard, Users, Clock, CalendarOff, DollarSign,
   Briefcase, BarChart3, ClipboardList, LogOut, ChevronLeft,
@@ -37,9 +38,17 @@ const ROLE_COLORS = {
 
 export default function Sidebar({ mobileOpen, onMobileClose }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [empCode, setEmpCode] = useState(null);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Fetch this user's employee code once on mount
+  useEffect(() => {
+    api.get("/employees/me")
+      .then(res => setEmpCode(res.data.employee_code || null))
+      .catch(() => {});
+  }, []);
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -117,6 +126,9 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
               <span className={`inline-block mt-0.5 text-[9px] px-2 py-0.5 rounded-full font-semibold border uppercase tracking-wider ${ROLE_COLORS[user?.role]}`}>
                 {ROLE_LABELS[user?.role]}
               </span>
+              {empCode && (
+                <p className="text-[9px] text-slate-500 font-mono mt-0.5 tracking-wider">{empCode}</p>
+              )}
             </div>
           </div>
         </div>

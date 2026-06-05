@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, extract
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, time, timezone, timedelta
 
 from database import get_db
 from models.attendance import Attendance, AttendanceStatus
@@ -80,29 +80,53 @@ async def clock_in(
 ):
     """
     Record clock-in for the authenticated user's linked employee.
-    - Only one clock-in per day is allowed.
-    - Status is set to `present` if before 09:30, otherwise `late`.
+    - Allows multiple clock-ins/outs in a day.
+    - Status is initialized to `present` or `late` on the first punch.
     """
+    import json
     emp = await _get_employee_for_user(current_user, db)
+    now = _local_time()
+    now_str = now.strftime("%H:%M:%S")
 
     existing = await _get_today_record(emp.id, db)
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="You have already clocked in today.",
+    if not existing:
+        # First clock in of the day
+        att_status = AttendanceStatus.late if now > LATE_THRESHOLD else AttendanceStatus.present
+        history = [{"in": now_str, "out": None}]
+        record = Attendance(
+            employee_id=emp.id,
+            date=date.today(),
+            clock_in=now,
+            clock_out=None,
+            status=att_status,
+            hours_worked=0.0,
+            clock_history=json.dumps(history),
         )
+        db.add(record)
+    else:
+        # Subsequent clock in of the day
+        record = existing
+        # Parse history
+        history = []
+        if record.clock_history:
+            try:
+                history = json.loads(record.clock_history)
+            except Exception:
+                pass
+        
+        # Check if the last punch is still open
+        if history and history[-1].get("out") is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="You are already clocked in. Please clock out first.",
+            )
+        
+        history.append({"in": now_str, "out": None})
+        record.clock_history = json.dumps(history)
+        # Reset clock_out field of the main record to None since they are currently clocked in
+        record.clock_out = None
+        db.add(record)
 
-    now = _local_time()
-    att_status = AttendanceStatus.late if now > LATE_THRESHOLD else AttendanceStatus.present
-
-    record = Attendance(
-        employee_id=emp.id,
-        date=date.today(),
-        clock_in=now,
-        status=att_status,
-        hours_worked=0.0,
-    )
-    db.add(record)
     await db.flush()
     await db.refresh(record)
 
@@ -112,8 +136,8 @@ async def clock_in(
         "action": "clock_in",
         "employee_id": emp.id,
         "employee_name": emp.name,
-        "status": att_status.value,
-        "time": str(now),
+        "status": record.status.value if hasattr(record.status, 'value') else str(record.status),
+        "time": now_str,
     }))
 
     return record
@@ -128,9 +152,12 @@ async def clock_out(
 ):
     """
     Record clock-out for the authenticated user's linked employee.
-    Automatically calculates `hours_worked` from clock_in to now.
+    Sums all completed punch durations and updates daily status.
     """
+    import json
     emp = await _get_employee_for_user(current_user, db)
+    now = _local_time()
+    now_str = now.strftime("%H:%M:%S")
 
     record = await _get_today_record(emp.id, db)
     if not record:
@@ -138,25 +165,64 @@ async def clock_out(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="You haven't clocked in today. Please clock in first.",
         )
-    if record.clock_out:
+
+    # Parse history
+    history = []
+    if record.clock_history:
+        try:
+            history = json.loads(record.clock_history)
+        except Exception:
+            pass
+
+    # Find if there is an active (un-clocked-out) punch
+    if not history or history[-1].get("out") is not None:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="You have already clocked out today.",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You are not clocked in. Please clock in first.",
         )
 
-    now = _local_time()
+    # Close the last punch session
+    history[-1]["out"] = now_str
+    record.clock_history = json.dumps(history)
     record.clock_out = now
 
-    # Calculate hours worked
-    if record.clock_in:
-        today = date.today()
-        ci = datetime.combine(today, record.clock_in)
-        co = datetime.combine(today, now)
-        record.hours_worked = max(0.0, round((co - ci).total_seconds() / 3600, 2))
+    # Recalculate total hours worked for today
+    total_seconds = 0.0
+    today_dt = date.today()
+    for punch in history:
+        in_t_str = punch.get("in")
+        out_t_str = punch.get("out")
+        if in_t_str and out_t_str:
+            try:
+                in_t = datetime.strptime(in_t_str, "%H:%M:%S").time()
+                out_t = datetime.strptime(out_t_str, "%H:%M:%S").time()
+                ci = datetime.combine(today_dt, in_t)
+                co = datetime.combine(today_dt, out_t)
+                diff = (co - ci).total_seconds()
+                if diff > 0:
+                    total_seconds += diff
+            except Exception:
+                pass
 
-        # Downgrade to half_day if worked < 4 hours
-        if record.hours_worked < 4.0:
-            record.status = AttendanceStatus.half_day
+    record.hours_worked = max(0.0, round(total_seconds / 3600.0, 2))
+
+    # Recalculate status based on the 9-hour / 4-hour rule
+    if record.hours_worked >= 9.0:
+        # Determine if they were late on their first clock-in of the day
+        first_in_time = None
+        if history and history[0].get("in"):
+            try:
+                first_in_time = datetime.strptime(history[0]["in"], "%H:%M:%S").time()
+            except Exception:
+                pass
+        
+        if first_in_time and first_in_time > LATE_THRESHOLD:
+            record.status = AttendanceStatus.late
+        else:
+            record.status = AttendanceStatus.present
+    else:
+        # Worked less than 9 hours total
+        record.status = AttendanceStatus.half_day
 
     db.add(record)
     await db.flush()
@@ -169,7 +235,7 @@ async def clock_out(
         "employee_id": emp.id,
         "employee_name": emp.name,
         "hours_worked": record.hours_worked,
-        "time": str(now),
+        "time": now_str,
     }))
 
     return record
@@ -183,9 +249,9 @@ async def get_today(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Returns today's attendance record for the logged-in user.
-    If no record exists, returns a `not_started` status object.
+    Returns today's attendance status and punch history for the logged-in user.
     """
+    import json
     emp = await _get_employee_for_user(current_user, db)
     record = await _get_today_record(emp.id, db)
 
@@ -198,9 +264,33 @@ async def get_today(
             "clock_in":     None,
             "clock_out":    None,
             "hours_worked": 0.0,
+            "clock_history": None,
             "can_clock_in":  True,
             "can_clock_out": False,
         }
+
+    # Parse history to find if we can clock in or out
+    can_clock_in = True
+    can_clock_out = False
+    
+    if record.clock_history:
+        try:
+            history = json.loads(record.clock_history)
+            if history:
+                if history[-1].get("out") is None:
+                    # Last punch session is open, they can only clock out
+                    can_clock_in = False
+                    can_clock_out = True
+                else:
+                    # Last punch session is closed, they can clock in again
+                    can_clock_in = True
+                    can_clock_out = False
+        except Exception:
+            pass
+    else:
+        # Fallback to standard columns if no history exists (e.g. for old data)
+        can_clock_in = record.clock_in is None
+        can_clock_out = record.clock_in is not None and record.clock_out is None
 
     return {
         "id":            record.id,
@@ -211,8 +301,9 @@ async def get_today(
         "clock_in":      record.clock_in.strftime("%H:%M:%S") if record.clock_in else None,
         "clock_out":     record.clock_out.strftime("%H:%M:%S") if record.clock_out else None,
         "hours_worked":  record.hours_worked,
-        "can_clock_in":  False,
-        "can_clock_out": record.clock_in is not None and record.clock_out is None,
+        "clock_history": record.clock_history,
+        "can_clock_in":  can_clock_in,
+        "can_clock_out": can_clock_out,
     }
 
 
@@ -274,10 +365,27 @@ async def get_my_summary(
         raise HTTPException(status_code=400, detail="Invalid month format. Use YYYY-MM.")
 
     import calendar
-    working_days_in_month = sum(
-        1 for d in range(1, calendar.monthrange(year, mon)[1] + 1)
-        if datetime(year, mon, d).weekday() < 5  # Mon-Fri
-    )
+    # Calculate start date for counting working days
+    start_dt = date(year, mon, 1)
+    if emp.date_of_joining and emp.date_of_joining > start_dt:
+        start_dt = emp.date_of_joining
+
+    # Calculate end date for counting working days
+    last_day = calendar.monthrange(year, mon)[1]
+    end_dt = date(year, mon, last_day)
+    today_dt = date.today()
+    if today_dt < end_dt:
+        end_dt = today_dt
+
+    # Count weekdays in the range [start_dt, end_dt]
+    working_days_in_month = 0
+    if start_dt <= end_dt:
+        curr = start_dt
+        while curr <= end_dt:
+            if curr.weekday() < 5:  # Monday to Friday
+                working_days_in_month += 1
+            curr += timedelta(days=1)
+
 
     rows = await db.execute(
         select(Attendance.status, func.count(Attendance.id), func.sum(Attendance.hours_worked))
@@ -302,6 +410,7 @@ async def get_my_summary(
     return {
         "month":               month,
         "employee_id":         emp.id,
+        "date_of_joining":     emp.date_of_joining.isoformat() if emp.date_of_joining else None,
         "working_days":        working_days_in_month,
         "present_days":        present_days,
         "late_days":           stats["late"]["count"],
@@ -341,6 +450,9 @@ async def get_all_attendance(
 
     emp_result = await db.execute(emp_query)
     employees  = emp_result.scalars().all()
+
+    # Filter out employees who were not yet joined as of the date_filter
+    employees = [e for e in employees if not e.date_of_joining or e.date_of_joining <= date_filter]
 
     # Fetch all attendance records for that date
     att_result = await db.execute(

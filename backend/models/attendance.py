@@ -1,7 +1,7 @@
 """
 models/attendance.py — Attendance tracking model
 """
-from sqlalchemy import Column, Integer, Date, Time, Float, ForeignKey, Enum, DateTime
+from sqlalchemy import Column, Integer, Date, Time, Float, ForeignKey, Enum, DateTime, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 import enum
@@ -32,6 +32,7 @@ class Attendance(Base):
         default=AttendanceStatus.present,
     )
     hours_worked = Column(Float, default=0.0)
+    clock_history = Column(Text, nullable=True)
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

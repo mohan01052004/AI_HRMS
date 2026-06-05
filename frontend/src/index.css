@@ -20,6 +20,7 @@
 
   /* Dynamic Active Violet Accent Mapping */
   --color-violet-300: var(--accent-text);
+  --color-violet-400: var(--accent-text);
   --color-violet-600: var(--accent-bg-grad);
   --color-violet-500: var(--accent-border);
 
@@ -154,7 +155,7 @@
 
     /* Violet Accent Light Mode (Readability & Contrast) */
     --accent-text: #6d28d9; /* Dark readable violet */
-    --accent-bg-grad: #f3e8ff; /* Soft lavender background */
+    --accent-bg-grad: #7c3aed; /* Bold, vibrant violet button background */
     --accent-border: #c084fc; /* Purple border */
   }
 
@@ -198,5 +199,32 @@
   }
   ::-webkit-scrollbar-thumb:hover {
     background: rgba(139, 92, 246, 0.3);
+  }
+
+  /* Ensure text-white inside bold/colored elements remains true white (#ffffff) in both themes */
+  .bg-violet-600, .bg-violet-500, .bg-violet-700, .bg-violet-800,
+  .from-violet-600, .from-violet-500, .from-violet-700,
+  .bg-indigo-600, .bg-indigo-500, .bg-indigo-700,
+  .from-indigo-600, .from-indigo-500,
+  .bg-fuchsia-600, .bg-fuchsia-500,
+  .from-fuchsia-600, .from-fuchsia-500,
+  .bg-emerald-600, .bg-emerald-500,
+  .from-emerald-600, .from-emerald-500,
+  .bg-rose-600, .bg-rose-500,
+  .from-rose-600, .from-rose-500,
+  .bg-blue-600, .bg-blue-500,
+  .from-blue-600, .from-blue-500,
+  .bg-amber-600, .bg-amber-500,
+  .from-amber-600, .from-amber-500,
+  .bg-red-600, .bg-red-500,
+  .from-red-600, .from-red-500,
+  .bg-green-600, .bg-green-500,
+  .from-green-600, .from-green-500 {
+    --color-white: #ffffff;
+  }
+
+  select option {
+    background-color: var(--bg-page);
+    color: var(--text-main);
   }
 }

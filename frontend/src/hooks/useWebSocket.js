@@ -13,9 +13,16 @@ export function useWebSocket({ token, onMessage, enabled = true }) {
   const reconnectTimerRef = useRef(null);
   const [status, setStatus] = useState("disconnected"); // connected | connecting | disconnected
 
+  const onMessageRef = useRef(onMessage);
+  useEffect(() => {
+    onMessageRef.current = onMessage;
+  }, [onMessage]);
+
   const connect = useCallback(() => {
     if (!enabled || !token) return;
-    if (wsRef.current?.readyState === WebSocket.OPEN) return;
+    if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
 
     setStatus("connecting");
     const url = `${WS_URL}?token=${encodeURIComponent(token)}`;
@@ -34,7 +41,7 @@ export function useWebSocket({ token, onMessage, enabled = true }) {
           ws.send(JSON.stringify({ event: "pong" }));
           return;
         }
-        onMessage?.(parsed);
+        onMessageRef.current?.(parsed);
       } catch {
         // Ignore malformed messages
       }
@@ -54,7 +61,7 @@ export function useWebSocket({ token, onMessage, enabled = true }) {
     ws.onerror = () => {
       ws.close();
     };
-  }, [enabled, token, onMessage]);
+  }, [enabled, token]);
 
   // Send a keepalive ping every 30 seconds
   useEffect(() => {
@@ -71,7 +78,12 @@ export function useWebSocket({ token, onMessage, enabled = true }) {
     connect();
     return () => {
       clearTimeout(reconnectTimerRef.current);
-      wsRef.current?.close();
+      if (wsRef.current) {
+        wsRef.current.onclose = null;
+        wsRef.current.onerror = null;
+        wsRef.current.close();
+        wsRef.current = null;
+      }
     };
   }, [connect]);
 

@@ -74,6 +74,22 @@ export default function Leave() {
   const { hasRole } = useAuth();
   const isAdminOrManager = hasRole("management_admin", "senior_manager");
 
+  // Compute tomorrow's date in YYYY-MM-DD (local time) for min-date constraints
+  const getTomorrow = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split("T")[0];
+  };
+  const tomorrow = getTomorrow();
+
+  // Returns true if the given YYYY-MM-DD string falls on Saturday or Sunday
+  const isWeekend = (dateStr) => {
+    if (!dateStr) return false;
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const day = new Date(y, m - 1, d).getDay(); // 0=Sun, 6=Sat
+    return day === 0 || day === 6;
+  };
+
   // State controls
   const [activeTab, setActiveTab] = useState(isAdminOrManager ? "pending" : "my");
   const [loading, setLoading] = useState(true);
@@ -143,11 +159,30 @@ export default function Leave() {
     fetchTabData();
   }, [fetchTabData]);
 
+  // Always re-fetch the current user's leave balances when the Apply modal opens
+  // (managers on the 'pending' tab won't have balances loaded otherwise)
+  useEffect(() => {
+    if (showApplyModal) {
+      api.get("/leave/my")
+        .then(res => setBalances(res.data.balances || []))
+        .catch(() => {});
+    }
+  }, [showApplyModal]);
+
   // Form submission handler (Employee Apply Leave)
   const handleApply = async (e) => {
     e.preventDefault();
     if (!form.leave_type_id || !form.from_date || !form.to_date) {
       toast.error("Please fill in all required fields.");
+      return;
+    }
+    // Guard: check remaining balance before submitting
+    const selBal = balances.find(b => b.leave_type_id === parseInt(form.leave_type_id, 10));
+    const requestedDays = getDaysCount(form.from_date, form.to_date);
+    if (selBal && requestedDays > selBal.days_remaining) {
+      toast.error(
+        `Insufficient balance. You only have ${selBal.days_remaining} day(s) remaining for "${selBal.leave_type_name}".`
+      );
       return;
     }
     setSubmitting(true);
@@ -523,13 +558,54 @@ export default function Leave() {
                 </select>
               </div>
 
+              {/* ── Balance info card (shown when a leave type is selected) ── */}
+              {form.leave_type_id && (() => {
+                const bal = balances.find(b => b.leave_type_id === parseInt(form.leave_type_id, 10));
+                if (!bal) return null;
+                const remainingColor =
+                  bal.days_remaining <= 0 ? "text-rose-400" :
+                  bal.days_remaining <= 3 ? "text-amber-400" : "text-emerald-400";
+                return (
+                  <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl px-4 py-3 grid grid-cols-3 gap-2 text-center">
+                    <div>
+                      <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Allowed</div>
+                      <div className="text-sm font-bold text-white">{bal.days_allowed}</div>
+                      <div className="text-[10px] text-slate-500">days/yr</div>
+                    </div>
+                    <div className="border-x border-slate-700/60">
+                      <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Used</div>
+                      <div className="text-sm font-bold text-amber-400">{bal.days_used}</div>
+                      <div className="text-[10px] text-slate-500">days</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Remaining</div>
+                      <div className={`text-sm font-bold ${remainingColor}`}>{bal.days_remaining}</div>
+                      <div className="text-[10px] text-slate-500">days</div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">From Date *</label>
                   <input
                     type="date"
                     value={form.from_date}
-                    onChange={(e) => setForm((p) => ({ ...p, from_date: e.target.value }))}
+                    min={tomorrow}
+                    onChange={(e) => {
+                      const newFrom = e.target.value;
+                      if (isWeekend(newFrom)) {
+                        toast.error("Weekends (Sat & Sun) are non-working days and cannot be selected.");
+                        return;
+                      }
+                      // Auto-clear to_date if it's before the new from_date
+                      setForm((p) => ({
+                        ...p,
+                        from_date: newFrom,
+                        to_date: p.to_date && p.to_date < newFrom ? "" : p.to_date,
+                      }));
+                    }}
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
                     required
                   />
@@ -539,22 +615,54 @@ export default function Leave() {
                   <input
                     type="date"
                     value={form.to_date}
-                    onChange={(e) => setForm((p) => ({ ...p, to_date: e.target.value }))}
+                    min={form.from_date || tomorrow}
+                    onChange={(e) => {
+                      const newTo = e.target.value;
+                      if (isWeekend(newTo)) {
+                        toast.error("Weekends (Sat & Sun) are non-working days and cannot be selected.");
+                        return;
+                      }
+                      setForm((p) => ({ ...p, to_date: newTo }));
+                    }}
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
                     required
                   />
                 </div>
               </div>
+              {/* Weekend notice */}
+              <p className="text-xs text-amber-400/70 flex items-center gap-1 -mt-1">
+                <AlertCircle size={11} />
+                Saturdays &amp; Sundays are non-working days and cannot be selected.
+              </p>
 
-              {form.from_date && form.to_date && (
-                <div className="bg-violet-950/20 border border-violet-500/10 rounded-xl px-3 py-2 flex items-center justify-between text-xs text-violet-400">
-                  <span className="flex items-center gap-1.5">
-                    <Info size={13} />
-                    Calculated duration:
-                  </span>
-                  <span className="font-bold">{getDaysCount(form.from_date, form.to_date)} day(s)</span>
-                </div>
-              )}
+              {form.from_date && form.to_date && (() => {
+                const days = getDaysCount(form.from_date, form.to_date);
+                const bal  = balances.find(b => b.leave_type_id === parseInt(form.leave_type_id, 10));
+                const over = bal && days > bal.days_remaining;
+                return (
+                  <>
+                    <div className={`border rounded-xl px-3 py-2 flex items-center justify-between text-xs
+                      ${over
+                        ? "bg-rose-950/20 border-rose-500/20 text-rose-400"
+                        : "bg-violet-950/20 border-violet-500/10 text-violet-400"}`}>
+                      <span className="flex items-center gap-1.5">
+                        <Info size={13} />
+                        Calculated duration:
+                      </span>
+                      <span className="font-bold">{days} day(s)</span>
+                    </div>
+                    {over && (
+                      <div className="flex items-start gap-1.5 text-xs text-rose-400 bg-rose-950/20 border border-rose-500/20 rounded-xl px-3 py-2">
+                        <AlertCircle size={13} className="shrink-0 mt-0.5" />
+                        <span>
+                          Exceeds your remaining balance of <strong>{bal.days_remaining} day(s)</strong>.
+                          Please reduce the duration or choose a different leave type.
+                        </span>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
 
               <div>
                 <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Reason for Leave</label>

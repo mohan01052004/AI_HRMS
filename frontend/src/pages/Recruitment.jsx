@@ -11,9 +11,9 @@ import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
 
 const STATUS_COLORS = {
-  open: "text-emerald-400 bg-emerald-400/10",
-  closed: "text-slate-400 bg-slate-400/10",
-  on_hold: "text-amber-400 bg-amber-400/10",
+  open: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10",
+  closed: "text-slate-600 dark:text-slate-400 bg-slate-500/10",
+  on_hold: "text-amber-600 dark:text-amber-400 bg-amber-500/10",
 };
 
 const SpeechRecognitionAPI =
@@ -129,9 +129,9 @@ export default function Recruitment() {
   };
 
   const getScoreColor = (score) => {
-    if (score >= 75) return "text-emerald-400";
-    if (score >= 50) return "text-amber-400";
-    return "text-rose-400";
+    if (score >= 75) return "text-emerald-600 dark:text-emerald-400";
+    if (score >= 50) return "text-amber-600 dark:text-amber-400";
+    return "text-rose-600 dark:text-rose-400";
   };
 
   // ── Voice Interview Logic ───────────────────────────────────────────────────
@@ -528,25 +528,25 @@ export default function Recruitment() {
                       )}
                       <div className="grid grid-cols-2 gap-3">
                         <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-3">
-                          <p className="text-xs font-medium text-emerald-400 mb-2">✓ Matched Skills</p>
+                          <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400 mb-2">✓ Matched Skills</p>
                           <div className="flex flex-wrap gap-1.5">
                             {(screenResult.matched_skills || []).map((s, i) => (
-                              <span key={i} className="text-xs px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded-full">{s}</span>
+                              <span key={i} className="text-xs px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full">{s}</span>
                             ))}
                           </div>
                         </div>
                         <div className="bg-rose-500/5 border border-rose-500/20 rounded-xl p-3">
-                          <p className="text-xs font-medium text-rose-400 mb-2">✗ Missing Skills</p>
+                          <p className="text-xs font-medium text-rose-600 dark:text-rose-400 mb-2">✗ Missing Skills</p>
                           <div className="flex flex-wrap gap-1.5">
                             {(screenResult.missing_skills || []).map((s, i) => (
-                              <span key={i} className="text-xs px-2 py-0.5 bg-rose-500/10 text-rose-400 rounded-full">{s}</span>
+                              <span key={i} className="text-xs px-2 py-0.5 bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-full">{s}</span>
                             ))}
                           </div>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-3">
-                          <p className="text-xs font-medium text-blue-400 mb-2">💪 Strengths</p>
+                          <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-2">💪 Strengths</p>
                           <ul className="list-disc pl-4 space-y-1">
                             {(screenResult.strengths || []).map((s, i) => (
                               <li key={i} className="text-xs text-slate-300">{s}</li>
@@ -554,7 +554,7 @@ export default function Recruitment() {
                           </ul>
                         </div>
                         <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3">
-                          <p className="text-xs font-medium text-amber-400 mb-2">⚠️ Weaknesses</p>
+                          <p className="text-xs font-medium text-amber-600 dark:text-amber-400 mb-2">⚠️ Weaknesses</p>
                           <ul className="list-disc pl-4 space-y-1">
                             {(screenResult.weaknesses || []).map((w, i) => (
                               <li key={i} className="text-xs text-slate-300">{w}</li>
@@ -768,7 +768,7 @@ export default function Recruitment() {
                             type="button"
                             onClick={submitDynamicAnswer}
                             disabled={evaluating}
-                            className="w-full py-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 text-xs font-semibold flex items-center justify-center gap-2 transition-colors"
+                            className="w-full py-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 text-xs font-semibold flex items-center justify-center gap-2 transition-colors"
                           >
                             {evaluating ? <Loader2 size={13} className="animate-spin" /> : <X size={13} />}
                             End Interview Early & Assess Candidate ({allAnswers.length} questions completed)

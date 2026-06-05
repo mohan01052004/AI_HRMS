@@ -138,10 +138,20 @@ async def generate_payroll(
     _: User = Depends(require_admin),
 ):
     """Bulk generate payslips for all active employees who have salary structures configured."""
+    from datetime import date as date_cls
     month = payload.get("month")
     year = payload.get("year")
     if not month or not year:
         raise HTTPException(status_code=400, detail="Month and year are required.")
+
+    # Block generation for future months
+    today = date_cls.today()
+    if (int(year), int(month)) > (today.year, today.month):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot generate payroll for a future month ({month}/{year}). "
+                   f"Only current or past months are allowed."
+        )
 
     # Find all active employees
     result = await db.execute(

@@ -90,6 +90,7 @@ class EmployeeUpdate(BaseModel):
 class EmployeeOut(BaseModel):
     id: int
     user_id: Optional[int] = None
+    employee_code: Optional[str] = None
     name: str
     email: str
     phone: Optional[str] = None

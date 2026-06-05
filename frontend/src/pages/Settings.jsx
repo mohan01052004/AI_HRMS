@@ -103,6 +103,7 @@ export default function Settings() {
     setSavingPw(true);
     try {
       await api.post("/auth/change-password", {
+        email:            user.email,
         current_password: pwForm.current,
         new_password:     pwForm.newPw,
       });

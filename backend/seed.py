@@ -168,14 +168,32 @@ async def seed(db: AsyncSession):
         {"name": "Meera Iyer", "email": "meera@hrms.com", "designation": "UI/UX Designer", "dept_idx": 5, "salary": 90000, "user_idx": None, "gender": "female"},
     ]
 
+    ROLE_PREFIX = {
+        UserRole.management_admin: "ADM",
+        UserRole.senior_manager:   "MGR",
+        UserRole.hr_recruiter:     "HR",
+        UserRole.employee:         "EMP",
+    }
+
     emp_objects = []
+    counters = {"ADM": 0, "MGR": 0, "HR": 0, "EMP": 0}
     for i, emp_data in enumerate(EMPLOYEE_DATA):
         result = await db.execute(select(Employee).where(Employee.email == emp_data["email"]))
         emp = result.scalar_one_or_none()
+        
+        # Determine prefix for this employee code
+        role = UserRole.employee
+        if emp_data["user_idx"] is not None:
+            role = DEMO_USERS[emp_data["user_idx"]]["role"]
+        prefix = ROLE_PREFIX.get(role, "EMP")
+        counters[prefix] += 1
+        emp_code = f"{prefix}-{str(counters[prefix]).zfill(4)}"
+
         if not emp:
             emp = Employee(
                 name=emp_data["name"],
                 email=emp_data["email"],
+                employee_code=emp_code,
                 designation=emp_data["designation"],
                 department_id=dept_objects[emp_data["dept_idx"]].id,
                 salary=emp_data["salary"],
@@ -190,9 +208,12 @@ async def seed(db: AsyncSession):
             db.add(emp)
             await db.flush()
         else:
-            # Update gender for existing seeded employees if not set
-            if not emp.gender:
-                emp.gender = emp_data["gender"]
+            # Update gender and employee_code for existing seeded employees if not set
+            if not emp.gender or not emp.employee_code:
+                if not emp.gender:
+                    emp.gender = emp_data["gender"]
+                if not emp.employee_code:
+                    emp.employee_code = emp_code
                 db.add(emp)
                 await db.flush()
         emp_objects.append(emp)

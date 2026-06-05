@@ -57,7 +57,15 @@ async def admin_dashboard(
     # Present today
     present_today = (await db.execute(
         select(func.count(Attendance.id)).where(
-            and_(Attendance.date == today, Attendance.status == AttendanceStatus.present)
+            and_(
+                Attendance.date == today,
+                Attendance.status.in_([
+                    AttendanceStatus.present,
+                    AttendanceStatus.late,
+                    AttendanceStatus.half_day,
+                    AttendanceStatus.work_from_home
+                ])
+            )
         )
     )).scalar() or 0
 
@@ -111,7 +119,12 @@ async def admin_dashboard(
                 and_(
                     func.extract("month", Attendance.date) == m,
                     func.extract("year", Attendance.date) == y,
-                    Attendance.status == AttendanceStatus.present,
+                    Attendance.status.in_([
+                        AttendanceStatus.present,
+                        AttendanceStatus.late,
+                        AttendanceStatus.half_day,
+                        AttendanceStatus.work_from_home
+                    ]),
                 )
             )
         )).scalar() or 0
@@ -168,7 +181,12 @@ async def manager_dashboard(
                 and_(
                     Attendance.employee_id.in_(team_ids),
                     Attendance.date == today,
-                    Attendance.status == AttendanceStatus.present,
+                    Attendance.status.in_([
+                        AttendanceStatus.present,
+                        AttendanceStatus.late,
+                        AttendanceStatus.half_day,
+                        AttendanceStatus.work_from_home
+                    ]),
                 )
             )
         )).scalar() or 0
@@ -274,7 +292,12 @@ async def employee_dashboard(
                 Attendance.employee_id == emp.id,
                 func.extract("month", Attendance.date) == current_month,
                 func.extract("year", Attendance.date) == current_year,
-                Attendance.status == AttendanceStatus.present,
+                Attendance.status.in_([
+                    AttendanceStatus.present,
+                    AttendanceStatus.late,
+                    AttendanceStatus.half_day,
+                    AttendanceStatus.work_from_home
+                ]),
             )
         )
     )).scalar() or 0
@@ -384,7 +407,11 @@ async def employee_detail_dashboard(
                     Attendance.employee_id == employee_id,
                     func.extract("month", Attendance.date) == m,
                     func.extract("year", Attendance.date) == y,
-                    Attendance.status == AttendanceStatus.present,
+                    Attendance.status.in_([
+                        AttendanceStatus.present,
+                        AttendanceStatus.half_day,
+                        AttendanceStatus.work_from_home
+                    ]),
                 )
             )
         )).scalar() or 0
@@ -413,7 +440,12 @@ async def employee_detail_dashboard(
                 Attendance.employee_id == employee_id,
                 func.extract("month", Attendance.date) == current_month,
                 func.extract("year", Attendance.date) == current_year,
-                Attendance.status.in_([AttendanceStatus.present, AttendanceStatus.late]),
+                Attendance.status.in_([
+                    AttendanceStatus.present,
+                    AttendanceStatus.late,
+                    AttendanceStatus.half_day,
+                    AttendanceStatus.work_from_home
+                ]),
             )
         )
     )).scalar() or 0
