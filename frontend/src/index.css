@@ -11,6 +11,7 @@
   --color-slate-700: var(--border-highlight);
   --color-slate-400: var(--text-sub);
   --color-slate-500: var(--text-muted);
+  --color-slate-300: var(--text-secondary);
   --color-slate-200: var(--text-headers);
   
   --color-white: var(--text-main);
@@ -122,6 +123,7 @@
     --border-highlight: rgba(255, 255, 255, 0.1);
     
     --text-main: #f3f4f6;
+    --text-secondary: #cbd5e1;
     --text-sub: #a1a1aa;
     --text-muted: #52525b;
     --text-headers: #e4e4e7;
@@ -145,6 +147,7 @@
     --border-highlight: #cbd5e1;
     
     --text-main: #0f172a;
+    --text-secondary: #334155;
     --text-sub: #475569;
     --text-muted: #64748b;
     --text-headers: #1e293b;

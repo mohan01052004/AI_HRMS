@@ -80,7 +80,7 @@ export default function Navbar({ onHamburgerClick }) {
         <button
           id="navbar-hamburger"
           onClick={onHamburgerClick}
-          className="lg:hidden w-9 h-9 rounded-xl bg-slate-900/60 border border-white/5 flex items-center
+          className="lg:hidden w-9 h-9 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center
             justify-center text-slate-400 hover:text-white hover:border-violet-500/30 transition-all shrink-0"
           aria-label="Toggle navigation menu"
         >
@@ -102,7 +102,7 @@ export default function Navbar({ onHamburgerClick }) {
         {/* ── Theme Toggle Button ── */}
         <button
           onClick={toggleTheme}
-          className="w-9 h-9 rounded-xl bg-slate-900/60 border border-white/5 flex items-center
+          className="w-9 h-9 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center
             justify-center text-slate-400 hover:text-white hover:border-violet-500/30 transition-all duration-300"
           aria-label="Toggle theme mode"
           title={theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
@@ -115,7 +115,7 @@ export default function Navbar({ onHamburgerClick }) {
           <button
             id="navbar-notifications"
             onClick={() => { setShowBell((v) => !v); setShowMenu(false); }}
-            className="relative w-9 h-9 rounded-xl bg-slate-900/60 border border-white/5 flex items-center
+            className="relative w-9 h-9 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center
               justify-center text-slate-400 hover:text-white hover:border-violet-500/30 transition-all duration-300"
           >
             <Bell size={15} />
@@ -134,14 +134,14 @@ export default function Navbar({ onHamburgerClick }) {
 
           {showBell && (
             <div className="fixed left-4 right-4 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80 glass-card
-              rounded-2xl shadow-2xl shadow-black/50 overflow-hidden z-50 border border-white/10 animate-fade-in">
+              rounded-2xl shadow-2xl shadow-black/50 overflow-hidden z-50 border border-slate-800 animate-fade-in">
               {/* Header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
                 <div className="flex items-center gap-2">
                   <Bell size={13} className="text-violet-400" />
                   <h4 className="text-xs font-bold text-white font-display tracking-wider uppercase">Notifications</h4>
                   {unreadCount > 0 && (
-                    <span className="text-[9px] px-1.5 py-0.5 bg-violet-600/20 text-violet-400 rounded-full font-bold">
+                    <span className="text-[9px] px-1.5 py-0.5 bg-violet-500/10 text-violet-400 rounded-full font-bold border border-violet-500/20">
                       {unreadCount} new
                     </span>
                   )}
@@ -158,19 +158,19 @@ export default function Navbar({ onHamburgerClick }) {
               </div>
 
               {/* Notification list */}
-              <div className="max-h-72 overflow-y-auto divide-y divide-white/5">
+              <div className="max-h-72 overflow-y-auto divide-y divide-slate-800">
                 {notifications.length === 0 ? (
                   <div className="py-10 text-center">
-                    <Bell size={22} className="text-slate-700 mx-auto mb-2" />
-                    <p className="text-slate-500 text-xs font-medium font-sans">All caught up!</p>
-                    <p className="text-slate-600 text-[10px] mt-0.5 font-sans">Real-time alerts will appear here.</p>
+                    <Bell size={22} className="text-slate-500 mx-auto mb-2" />
+                    <p className="text-slate-400 text-xs font-medium font-sans">All caught up!</p>
+                    <p className="text-slate-500 text-[10px] mt-0.5 font-sans">Real-time alerts will appear here.</p>
                   </div>
                 ) : (
                   notifications.slice(0, 20).map((n) => (
                     <div
                       key={n.id}
                       onClick={() => handleNotificationClick(n)}
-                      className={`flex gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-white/5
+                      className={`flex gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-slate-950/20
                         ${!n.read ? "bg-violet-500/5" : ""}`}
                     >
                       <div className="mt-0.5 shrink-0">
@@ -182,7 +182,7 @@ export default function Navbar({ onHamburgerClick }) {
                         <p className={`text-xs font-semibold leading-snug ${!n.read ? "text-white" : "text-slate-300"}`}>
                           {n.title}
                         </p>
-                        <p className="text-[9px] text-slate-500 mt-1 font-medium font-sans">
+                        <p className="text-[9px] text-slate-400 mt-1 font-medium font-sans">
                           {new Date(n.timestamp).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
                         </p>
                       </div>
@@ -195,8 +195,8 @@ export default function Navbar({ onHamburgerClick }) {
               </div>
 
               {/* Footer */}
-              <div className="border-t border-white/5 px-4 py-2.5 bg-slate-950/30">
-                <p className="text-[10px] text-slate-500 text-center font-medium font-sans">
+              <div className="border-t border-slate-800 px-4 py-2.5 bg-slate-950/10">
+                <p className="text-[10px] text-slate-400 text-center font-medium font-sans">
                   Notifications are cleared on logout
                 </p>
               </div>
@@ -209,7 +209,7 @@ export default function Navbar({ onHamburgerClick }) {
           <button
             id="navbar-user-menu"
             onClick={() => { setShowMenu((v) => !v); setShowBell(false); }}
-            className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-xl bg-slate-900/60 border border-white/5
+            className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-xl bg-slate-950/60 border border-slate-800
               hover:border-violet-500/30 transition-all duration-300"
           >
             <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-500
@@ -229,9 +229,9 @@ export default function Navbar({ onHamburgerClick }) {
 
           {showMenu && (
             <div className="absolute right-0 top-full mt-2 w-52 glass-card
-              rounded-2xl shadow-2xl shadow-black/50 overflow-hidden py-1.5 z-50 border border-white/10 animate-fade-in">
+              rounded-2xl shadow-2xl shadow-black/50 overflow-hidden py-1.5 z-50 border border-slate-800 animate-fade-in">
               {/* User info header */}
-              <div className="px-4 py-3 border-b border-white/5 mb-1.5 bg-slate-950/20">
+              <div className="px-4 py-3 border-b border-slate-800 mb-1.5 bg-slate-950/10">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-500
                     flex items-center justify-center shrink-0 shadow-md shadow-violet-500/10">
@@ -241,7 +241,7 @@ export default function Navbar({ onHamburgerClick }) {
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs text-white font-bold truncate leading-tight font-display">{user?.name}</p>
-                    <p className="text-[10px] text-slate-500 truncate mt-0.5 font-sans">{user?.email}</p>
+                    <p className="text-[10px] text-slate-400 truncate mt-0.5 font-sans">{user?.email}</p>
                   </div>
                 </div>
                 <span className="mt-2 inline-block text-[9px] px-2 py-0.5 rounded-full
@@ -255,9 +255,9 @@ export default function Navbar({ onHamburgerClick }) {
                 id="navbar-profile"
                 onClick={() => goTo("/profile")}
                 className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-semibold text-slate-300
-                  hover:text-white hover:bg-white/5 transition-colors font-display"
+                  hover:text-white hover:bg-slate-950/20 transition-colors font-display"
               >
-                <div className="w-6 h-6 rounded-lg bg-slate-950 flex items-center justify-center border border-white/5">
+                <div className="w-6 h-6 rounded-lg bg-slate-950/40 flex items-center justify-center border border-slate-800">
                   <User size={11} className="text-violet-400" />
                 </div>
                 My Profile
@@ -267,15 +267,15 @@ export default function Navbar({ onHamburgerClick }) {
                 id="navbar-settings"
                 onClick={() => goTo("/settings")}
                 className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-semibold text-slate-300
-                  hover:text-white hover:bg-white/5 transition-colors font-display"
+                  hover:text-white hover:bg-slate-950/20 transition-colors font-display"
               >
-                <div className="w-6 h-6 rounded-lg bg-slate-950 flex items-center justify-center border border-white/5">
+                <div className="w-6 h-6 rounded-lg bg-slate-950/40 flex items-center justify-center border border-slate-800">
                   <Settings size={11} className="text-violet-400" />
                 </div>
                 Settings
               </button>
 
-              <div className="border-t border-white/5 mt-1.5 pt-1.5 bg-slate-950/20">
+              <div className="border-t border-slate-800 mt-1.5 pt-1.5 bg-slate-950/10">
                 <button
                   id="navbar-logout"
                   onClick={handleLogout}

@@ -67,7 +67,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
       <div className="absolute top-0 left-0 w-full h-40 bg-gradient-to-b from-violet-600/5 to-transparent pointer-events-none" />
 
       {/* Logo Section */}
-      <div className={`flex items-center gap-3 px-4 py-5 border-b border-white/5 relative z-10 ${collapsed ? "justify-center" : ""}`}>
+      <div className={`flex items-center gap-3 px-4 py-5 border-b border-slate-800 relative z-10 ${collapsed ? "justify-center" : ""}`}>
         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center shrink-0 shadow-md shadow-violet-500/10">
           <Building2 size={16} className="text-white" />
         </div>
@@ -93,7 +93,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
       {/* Collapse toggle button — desktop only */}
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="absolute -right-3 top-[4.5rem] w-6 h-6 rounded-full bg-slate-900 border border-white/10
+        className="absolute -right-3 top-[4.5rem] w-6 h-6 rounded-full bg-slate-900 border border-slate-800
           hidden lg:flex items-center justify-center text-slate-400 hover:text-white hover:border-violet-500/30 transition-colors z-20"
         id="sidebar-toggle"
       >
@@ -102,7 +102,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
 
       {/* User profile widget */}
       {!collapsed && (
-        <div className="px-4 py-4 border-b border-white/5 relative z-10">
+        <div className="px-4 py-4 border-b border-slate-800 relative z-10">
           <div className="flex items-center gap-3">
             <div className="relative">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center shadow-md shadow-violet-500/15">
@@ -133,7 +133,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
               `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 relative group
               ${isActive
                 ? "bg-gradient-to-r from-violet-600/15 to-fuchsia-600/5 text-violet-300 border border-violet-500/20 shadow-sm shadow-violet-500/5"
-                : "text-slate-400 hover:text-white hover:bg-slate-900/60 border border-transparent hover:border-white/5"
+                : "text-slate-400 hover:text-white hover:bg-slate-950/20 border border-transparent hover:border-slate-800"
               }
               ${collapsed ? "justify-center" : ""}
             `
@@ -162,7 +162,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
       )}
 
       {/* Logout Button */}
-      <div className="px-2.5 pb-4 border-t border-white/5 pt-3 relative z-10">
+      <div className="px-2.5 pb-4 border-t border-slate-800 pt-3 relative z-10">
         <button
           onClick={handleLogout}
           id="sidebar-logout"
@@ -182,7 +182,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
   return (
     <>
       {/* Desktop sidebar — always visible */}
-      <div className="hidden lg:flex h-screen bg-[#030712]">
+      <div className="hidden lg:flex h-screen bg-slate-950">
         {sidebarContent}
       </div>
 

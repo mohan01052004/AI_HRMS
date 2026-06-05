@@ -51,7 +51,7 @@ function StatCard({ icon: Icon, label, value, color = "bg-violet-600", sub }) {
 function SectionCard({ title, icon: Icon, children }) {
   return (
     <div className="glass-card rounded-2xl p-5">
-      <div className="flex items-center gap-2 mb-5 border-b border-white/5 pb-3">
+      <div className="flex items-center gap-2 mb-5 border-b border-slate-800 pb-3">
         {Icon && <Icon size={14} className="text-violet-400" />}
         <h3 className="text-xs font-bold text-white uppercase tracking-wider font-display">{title}</h3>
       </div>
@@ -63,12 +63,12 @@ function SectionCard({ title, icon: Icon, children }) {
 function LoadingSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
-      <div className="h-32 bg-white/5 border border-white/5 rounded-2xl" />
+      <div className="h-32 bg-slate-900 border border-slate-800 rounded-2xl" />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, i) => <div key={i} className="h-24 bg-white/5 border border-white/5 rounded-2xl" />)}
+        {[...Array(4)].map((_, i) => <div key={i} className="h-24 bg-slate-900 border border-slate-800 rounded-2xl" />)}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {[...Array(2)].map((_, i) => <div key={i} className="h-48 bg-white/5 border border-white/5 rounded-2xl" />)}
+        {[...Array(2)].map((_, i) => <div key={i} className="h-48 bg-slate-900 border border-slate-800 rounded-2xl" />)}
       </div>
     </div>
   );
@@ -98,7 +98,7 @@ export default function EmployeeDashboard() {
 
   if (loading) {
     return (
-      <div className="h-full overflow-y-auto p-6 bg-[#030712]">
+      <div className="h-full overflow-y-auto p-6 bg-slate-950">
         <LoadingSkeleton />
       </div>
     );
@@ -106,8 +106,8 @@ export default function EmployeeDashboard() {
 
   if (error) {
     return (
-      <div className="h-full flex items-center justify-center bg-[#030712]">
-        <div className="text-center p-6 glass-card rounded-3xl border border-white/10 max-w-sm">
+      <div className="h-full flex items-center justify-center bg-slate-950">
+        <div className="text-center p-6 glass-card rounded-3xl border border-slate-800 max-w-sm">
           <AlertTriangle size={36} className="text-rose-400 mx-auto mb-3" />
           <p className="text-white font-bold font-display">{error}</p>
           <button onClick={() => navigate("/employees")} className="mt-4 text-xs font-bold text-violet-400 hover:text-violet-300 uppercase tracking-wider">
@@ -124,7 +124,7 @@ export default function EmployeeDashboard() {
   const payrollChartData = [...payroll_history].reverse();
 
   return (
-    <div className="h-full overflow-y-auto bg-[#030712] font-sans">
+    <div className="h-full overflow-y-auto bg-slate-950 font-sans">
       <div className="p-6 space-y-6 max-w-6xl mx-auto">
 
         {/* Back button */}
@@ -137,7 +137,7 @@ export default function EmployeeDashboard() {
         </button>
 
         {/* Profile Header Card */}
-        <div className="bg-gradient-to-r from-violet-600/10 via-indigo-600/5 to-slate-950/20 border border-white/10 rounded-3xl p-6 relative overflow-hidden">
+        <div className="bg-gradient-to-r from-violet-600/10 via-indigo-600/5 to-slate-950/20 border border-slate-800 rounded-3xl p-6 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/5 rounded-full blur-2xl pointer-events-none" />
           <div className="flex flex-col md:flex-row items-start md:items-center gap-5 justify-between">
             <div className="flex items-center gap-5">
@@ -183,7 +183,7 @@ export default function EmployeeDashboard() {
             </div>
 
             {avg_rating && (
-              <div className="text-left md:text-right shrink-0 mt-3 md:mt-0 p-3 rounded-2xl bg-white/5 border border-white/5">
+              <div className="text-left md:text-right shrink-0 mt-3 md:mt-0 p-3 rounded-2xl bg-slate-950/10 border border-slate-800">
                 <div className="text-3xl font-black text-amber-400 font-display leading-none">{avg_rating}</div>
                 <div className="flex items-center gap-0.5 justify-start md:justify-end mt-1.5">
                   {[...Array(5)].map((_, i) => (
@@ -264,7 +264,7 @@ export default function EmployeeDashboard() {
                       <span className="text-slate-300">{name}</span>
                       <span className="text-slate-400">{bal.used}/{bal.allowed} used</span>
                     </div>
-                    <div className="h-1.5 bg-slate-950 border border-white/5 rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-slate-950 border border-slate-800 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-violet-500 rounded-full transition-all duration-500"
                         style={{ width: `${Math.min((bal.used / bal.allowed) * 100, 100)}%` }}
@@ -289,7 +289,7 @@ export default function EmployeeDashboard() {
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-white font-bold truncate leading-none">{g.title}</p>
                       <div className="flex items-center gap-2 mt-2">
-                        <div className="flex-1 h-1 bg-slate-950 border border-white/5 rounded-full overflow-hidden">
+                        <div className="flex-1 h-1 bg-slate-950 border border-slate-800 rounded-full overflow-hidden">
                           <div className="h-full bg-violet-500 rounded-full" style={{ width: `${g.progress || 0}%` }} />
                         </div>
                         <span className="text-[9px] font-bold text-slate-500 shrink-0">{g.progress || 0}%</span>
@@ -308,7 +308,7 @@ export default function EmployeeDashboard() {
             ) : (
               <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
                 {reviews.map((r) => (
-                  <div key={r.id} className="bg-slate-950/45 border border-white/5 rounded-2xl p-4">
+                  <div key={r.id} className="bg-slate-950/10 border border-slate-800 rounded-2xl p-4">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs font-bold text-white font-display">{r.period}</p>
                       <div className="flex items-center gap-1 font-bold text-amber-400">
