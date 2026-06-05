@@ -12,13 +12,18 @@ Endpoints:
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func, or_, delete, update
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
 
 from database import get_db
 from models.employee import Employee, Department, EmployeeStatus
 from models.user import User
+from models.attendance import Attendance
+from models.leave import LeaveRequest
+from models.payroll import (
+    Payslip, SalaryStructure, Goal, PerformanceReview, OnboardingTask, JobPosting
+)
 from schemas.employee import (
     EmployeeCreate,
     EmployeeUpdate,
@@ -548,37 +553,89 @@ async def update_employee(
     return result.scalar_one()
 
 
-# ─── Soft-Delete Employee ─────────────────────────────────────────────────────
+# ─── Hard-Delete Employee ─────────────────────────────────────────────────────
 
 @router.delete(
     "/{employee_id}",
     status_code=status.HTTP_200_OK,
-    summary="Soft-delete employee — sets status to inactive (Admin only)",
+    summary="Hard-delete employee and associated user account (Admin only)",
 )
 async def delete_employee(
     employee_id: int,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    current_user: User = Depends(require_admin),
 ):
     """
-    Soft-delete: marks the employee as `inactive` rather than removing the record.
-    This preserves historical data (attendance, payroll, leave).
+    Permanently hard-deletes the employee, all their associated record logs
+    (attendance, payroll, leave requests, goals, onboarding tasks, performance reviews),
+    and their login account to fully wipe details.
     Requires Admin role only.
     """
     emp = await _get_employee_or_404(employee_id, db)
 
-    if emp.status == EmployeeStatus.inactive:
+    # Prevent self-deletion
+    if emp.user_id == current_user.id:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Employee is already inactive.",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot delete your own admin account.",
         )
 
-    emp.status = EmployeeStatus.inactive
-    db.add(emp)
-    await db.flush()
+    # 1. Nullify manager_id references in departments
+    await db.execute(
+        update(Department)
+        .where(Department.manager_id == employee_id)
+        .values(manager_id=None)
+    )
+
+    # 2. Nullify manager_id references in other employees
+    await db.execute(
+        update(Employee)
+        .where(Employee.manager_id == employee_id)
+        .values(manager_id=None)
+    )
+
+    # If employee has a user login profile, nullify references to that user
+    if emp.user_id:
+        # 3. Nullify created_by in job postings
+        await db.execute(
+            update(JobPosting)
+            .where(JobPosting.created_by == emp.user_id)
+            .values(created_by=None)
+        )
+
+        # 4. Nullify reviewer_id in performance reviews
+        await db.execute(
+            update(PerformanceReview)
+            .where(PerformanceReview.reviewer_id == emp.user_id)
+            .values(reviewer_id=None)
+        )
+
+        # 5. Nullify approved_by in leave requests
+        await db.execute(
+            update(LeaveRequest)
+            .where(LeaveRequest.approved_by == emp.user_id)
+            .values(approved_by=None)
+        )
+
+    # 6. Delete related employee detail records
+    await db.execute(delete(Attendance).where(Attendance.employee_id == employee_id))
+    await db.execute(delete(LeaveRequest).where(LeaveRequest.employee_id == employee_id))
+    await db.execute(delete(Payslip).where(Payslip.employee_id == employee_id))
+    await db.execute(delete(SalaryStructure).where(SalaryStructure.employee_id == employee_id))
+    await db.execute(delete(Goal).where(Goal.employee_id == employee_id))
+    await db.execute(delete(PerformanceReview).where(PerformanceReview.employee_id == employee_id))
+    await db.execute(delete(OnboardingTask).where(OnboardingTask.employee_id == employee_id))
+
+    # 7. Delete the employee record itself
+    await db.execute(delete(Employee).where(Employee.id == employee_id))
+
+    # 8. Delete the user record itself
+    if emp.user_id:
+        await db.execute(delete(User).where(User.id == emp.user_id))
+
+    await db.commit()
 
     return {
-        "message": f"Employee '{emp.name}' (id={emp.id}) has been deactivated.",
-        "id": emp.id,
-        "status": emp.status,
+        "message": f"Employee '{emp.name}' and all associated details have been permanently deleted.",
+        "id": employee_id,
     }

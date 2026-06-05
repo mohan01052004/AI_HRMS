@@ -105,7 +105,7 @@ function FormField({ label, required, error, children }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Employees() {
-  const { hasRole } = useAuth();
+  const { hasRole, user } = useAuth();
   const navigate = useNavigate();
   const canCreate = hasRole("management_admin", "hr_recruiter");
   const canEdit   = hasRole("management_admin", "senior_manager", "hr_recruiter");
@@ -298,9 +298,9 @@ export default function Employees() {
     }
   };
 
-  // ── Soft Delete ──────────────────────────────────────────────────────────
+  // ── Permanent Hard Delete ──────────────────────────────────────────────────
 
-  const handleDeactivate = async () => {
+  const handleDeleteEmployee = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
@@ -308,7 +308,7 @@ export default function Employees() {
       setDeleteTarget(null);
       setRefreshKey(k => k + 1);
     } catch (err) {
-      alert(err.response?.data?.detail || "Failed to deactivate employee.");
+      alert(err.response?.data?.detail || "Failed to delete employee.");
     } finally {
       setDeleting(false);
     }
@@ -581,12 +581,12 @@ export default function Employees() {
                           </button>
                         )}
 
-                        {/* Deactivate — Admin only */}
-                        {canDelete && emp.status !== "inactive" && (
+                        {/* Delete — Admin only, excluding self */}
+                        {canDelete && emp.user_id !== user?.id && (
                           <button
                             id={`delete-emp-${emp.id}`}
                             onClick={() => setDeleteTarget(emp)}
-                            title="Deactivate employee"
+                            title="Delete employee permanently"
                             className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400
                               hover:bg-rose-400/10 transition-colors"
                           >
@@ -1041,7 +1041,7 @@ export default function Employees() {
       )}
 
       {/* ══════════════════════════════════════════════════════════════════
-          DEACTIVATE CONFIRMATION DIALOG
+          DELETE CONFIRMATION DIALOG
       ══════════════════════════════════════════════════════════════════ */}
       {deleteTarget && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -1050,13 +1050,12 @@ export default function Employees() {
               flex items-center justify-center mx-auto mb-4">
               <Trash2 size={22} className="text-rose-400" />
             </div>
-            <h3 className="font-semibold text-white text-base mb-1">Deactivate Employee?</h3>
+            <h3 className="font-semibold text-white text-base mb-1">Delete Account Permanently?</h3>
             <p className="text-slate-400 text-sm mb-1">
-              <span className="text-white font-medium">{deleteTarget.name}</span> will be marked as{" "}
-              <span className="text-amber-400 font-medium">inactive</span>.
+              Are you sure you want to permanently delete <span className="text-white font-medium">{deleteTarget.name}</span>?
             </p>
             <p className="text-slate-500 text-xs mb-6">
-              Their records (attendance, payroll, leave) are preserved. You can reactivate them later via Edit.
+              This will permanently delete all associated login credentials, attendance history, payroll slips, leave requests, and performance records. This action cannot be undone.
             </p>
             <div className="flex gap-3">
               <button
@@ -1068,15 +1067,15 @@ export default function Employees() {
                 Cancel
               </button>
               <button
-                id="confirm-deactivate-btn"
-                onClick={handleDeactivate}
+                id="confirm-delete-btn"
+                onClick={handleDeleteEmployee}
                 disabled={deleting}
                 className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white
                   text-sm font-semibold transition-colors disabled:opacity-60
                   flex items-center justify-center gap-2"
               >
                 {deleting && <Loader2 size={14} className="animate-spin" />}
-                {deleting ? "Deactivating…" : "Deactivate"}
+                {deleting ? "Deleting…" : "Delete Permanently"}
               </button>
             </div>
           </div>
