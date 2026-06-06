@@ -9,7 +9,7 @@ from typing import List, Optional
 from datetime import datetime, timezone, date
 from pydantic import BaseModel, Field
 
-from database import get_db
+from database import get_db, cache_delete
 from models.leave import LeaveType, LeaveRequest, LeaveStatus
 from models.employee import Employee
 from models.user import User
@@ -216,6 +216,11 @@ async def apply_leave(
     )
     req_loaded = result.scalar_one()
     req_loaded.employee_name = emp.name
+
+    cache_delete(f"employee_dashboard_{current_user.id}")
+    cache_delete(f"employee_detail_dashboard_{emp.id}")
+    cache_delete("admin_dashboard")
+
     return req_loaded
 
 
@@ -413,6 +418,12 @@ async def approve_leave(
     if req.employee:
         req.employee_name = req.employee.name
 
+    # Clear target employee cache
+    if req.employee and req.employee.user_id:
+        cache_delete(f"employee_dashboard_{req.employee.user_id}")
+    cache_delete(f"employee_detail_dashboard_{req.employee_id}")
+    cache_delete("admin_dashboard")
+
     return req
 
 
@@ -492,6 +503,12 @@ async def reject_leave(
                 "message": f"Your leave request has been rejected. Reason: {payload.reason or 'Not specified'}",
             }))
         req.employee_name = req.employee.name
+
+    # Clear target employee cache
+    if req.employee and req.employee.user_id:
+        cache_delete(f"employee_dashboard_{req.employee.user_id}")
+    cache_delete(f"employee_detail_dashboard_{req.employee_id}")
+    cache_delete("admin_dashboard")
 
     return req
 
@@ -580,3 +597,8 @@ async def cancel_leave(
         )
     req.status = LeaveStatus.cancelled
     db.add(req)
+
+    # Evict cache
+    cache_delete(f"employee_dashboard_{current_user.id}")
+    cache_delete(f"employee_detail_dashboard_{emp.id}")
+    cache_delete("admin_dashboard")

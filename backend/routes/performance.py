@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List, Optional
 
-from database import get_db
+from database import get_db, cache_delete
 from models.payroll import Goal, PerformanceReview, OnboardingTask
 from models.employee import Employee
 from models.user import User, UserRole
@@ -83,6 +83,14 @@ async def create_goal(
     db.add(goal)
     await db.flush()
     await db.refresh(goal)
+
+    # Evict cache
+    emp_res = await db.execute(select(Employee.user_id).where(Employee.id == payload.employee_id))
+    tgt_user_id = emp_res.scalar_one_or_none()
+    if tgt_user_id:
+        cache_delete(f"employee_dashboard_{tgt_user_id}")
+    cache_delete(f"employee_detail_dashboard_{payload.employee_id}")
+
     return goal
 
 
@@ -109,6 +117,14 @@ async def update_goal(
     db.add(goal)
     await db.flush()
     await db.refresh(goal)
+
+    # Evict cache
+    emp_res = await db.execute(select(Employee.user_id).where(Employee.id == goal.employee_id))
+    tgt_user_id = emp_res.scalar_one_or_none()
+    if tgt_user_id:
+        cache_delete(f"employee_dashboard_{tgt_user_id}")
+    cache_delete(f"employee_detail_dashboard_{goal.employee_id}")
+
     return goal
 
 
@@ -128,6 +144,13 @@ async def delete_goal(
         own_id = await _get_own_employee_id(current_user, db)
         if goal.employee_id != own_id:
             raise HTTPException(status_code=403, detail="You can only delete your own goals.")
+
+    # Evict cache
+    emp_res = await db.execute(select(Employee.user_id).where(Employee.id == goal.employee_id))
+    tgt_user_id = emp_res.scalar_one_or_none()
+    if tgt_user_id:
+        cache_delete(f"employee_dashboard_{tgt_user_id}")
+    cache_delete(f"employee_detail_dashboard_{goal.employee_id}")
 
     await db.delete(goal)
 
@@ -170,6 +193,14 @@ async def create_review(
     db.add(review)
     await db.flush()
     await db.refresh(review)
+
+    # Evict cache
+    emp_res = await db.execute(select(Employee.user_id).where(Employee.id == payload.employee_id))
+    tgt_user_id = emp_res.scalar_one_or_none()
+    if tgt_user_id:
+        cache_delete(f"employee_dashboard_{tgt_user_id}")
+    cache_delete(f"employee_detail_dashboard_{payload.employee_id}")
+
     return review
 
 

@@ -271,6 +271,11 @@ async def employee_dashboard(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    cache_key = f"employee_dashboard_{current_user.id}"
+    cached = cache_get(cache_key)
+    if cached:
+        return cached
+
     today = date.today()
     current_month = today.month
     current_year = today.year
@@ -278,12 +283,14 @@ async def employee_dashboard(
     # Get own employee record
     emp = await _get_employee_for_user(db, current_user)
     if not emp:
-        return {
+        res = {
             "my_attendance_this_month": 0,
             "leave_balance": {},
             "latest_payslip_summary": None,
             "my_goals_count": 0,
         }
+        cache_set(cache_key, res)
+        return res
 
     # Attendance this month (days present)
     attendance_this_month = (await db.execute(
@@ -356,12 +363,14 @@ async def employee_dashboard(
         )
     )).scalar() or 0
 
-    return {
+    res = {
         "my_attendance_this_month": attendance_this_month,
         "leave_balance": leave_balance,
         "latest_payslip_summary": payslip_summary,
         "my_goals_count": goals_count,
     }
+    cache_set(cache_key, res)
+    return res
 
 
 # ─── 5. Admin: Per-Employee Drill-Down Dashboard ──────────────────────────────
@@ -380,6 +389,11 @@ async def employee_detail_dashboard(
     """
     if current_user.role not in ("management_admin", "senior_manager", "hr_recruiter"):
         raise HTTPException(status_code=403, detail="Management access required.")
+
+    cache_key = f"employee_detail_dashboard_{employee_id}"
+    cached = cache_get(cache_key)
+    if cached:
+        return cached
 
     # Get the employee
     from sqlalchemy.orm import selectinload
@@ -529,7 +543,7 @@ async def employee_detail_dashboard(
         for p in payslips_result.scalars().all()
     ]
 
-    return {
+    res = {
         "employee": {
             "id": emp.id,
             "name": emp.name,
@@ -548,6 +562,8 @@ async def employee_detail_dashboard(
         "avg_rating": avg_rating,
         "payroll_history": payroll_history,
     }
+    cache_set(cache_key, res)
+    return res
 
 
 @router.get("/analytics")

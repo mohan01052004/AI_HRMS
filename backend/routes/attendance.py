@@ -18,7 +18,7 @@ from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from datetime import date, datetime, time, timezone, timedelta
 
-from database import get_db
+from database import get_db, cache_delete
 from models.attendance import Attendance, AttendanceStatus
 from models.employee import Employee, Department
 from models.user import User
@@ -140,6 +140,10 @@ async def clock_in(
         "time": now_str,
     }))
 
+    cache_delete(f"employee_dashboard_{current_user.id}")
+    cache_delete(f"employee_detail_dashboard_{emp.id}")
+    cache_delete("admin_dashboard")
+
     return record
 
 
@@ -237,6 +241,10 @@ async def clock_out(
         "hours_worked": record.hours_worked,
         "time": now_str,
     }))
+
+    cache_delete(f"employee_dashboard_{current_user.id}")
+    cache_delete(f"employee_detail_dashboard_{emp.id}")
+    cache_delete("admin_dashboard")
 
     return record
 
@@ -542,6 +550,15 @@ async def create_attendance(
     db.add(record)
     await db.flush()
     await db.refresh(record)
+
+    # Evict cache for target employee
+    emp_res = await db.execute(select(Employee.user_id).where(Employee.id == payload.employee_id))
+    tgt_user_id = emp_res.scalar_one_or_none()
+    if tgt_user_id:
+        cache_delete(f"employee_dashboard_{tgt_user_id}")
+    cache_delete(f"employee_detail_dashboard_{payload.employee_id}")
+    cache_delete("admin_dashboard")
+
     return record
 
 
@@ -556,4 +573,13 @@ async def delete_attendance(
     record = result.scalar_one_or_none()
     if not record:
         raise HTTPException(status_code=404, detail="Attendance record not found.")
+
+    # Evict cache for target employee
+    emp_res = await db.execute(select(Employee.user_id).where(Employee.id == record.employee_id))
+    tgt_user_id = emp_res.scalar_one_or_none()
+    if tgt_user_id:
+        cache_delete(f"employee_dashboard_{tgt_user_id}")
+    cache_delete(f"employee_detail_dashboard_{record.employee_id}")
+    cache_delete("admin_dashboard")
+
     await db.delete(record)

@@ -2,6 +2,7 @@
  * pages/Dashboard.jsx — Role-specific dashboard with real API data (Redesigned with Premium Glassmorphism & High-Fi Aesthetics)
  */
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
@@ -10,6 +11,7 @@ import {
   Users, Clock, CalendarOff, Briefcase, TrendingUp, Target,
   AlertTriangle, CheckCircle2, Sparkles, Loader2, IndianRupee,
   UserCheck, FileText, Star, Building2, ClipboardList,
+  Search, X,
 } from "lucide-react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
@@ -471,10 +473,111 @@ function EmployeeDashboard() {
   );
 }
 
+// ─── Employee Search Box ─────────────────────────────────────────────────────
+
+function EmployeeSearchBox() {
+  const navigate = useNavigate();
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [searching, setSearching] = useState(false);
+
+  useEffect(() => {
+    if (query.trim().length < 2) {
+      setResults([]);
+      return;
+    }
+    setSearching(true);
+    const delayDebounce = setTimeout(() => {
+      api.get(`/employees?search=${query}&limit=5`)
+        .then(res => {
+          const items = Array.isArray(res.data) ? res.data : (res.data.items || []);
+          setResults(items);
+        })
+        .catch(() => setResults([]))
+        .finally(() => setSearching(false));
+    }, 300);
+
+    return () => clearTimeout(delayDebounce);
+  }, [query]);
+
+  return (
+    <div className="relative w-full sm:w-64 z-20">
+      <div className="relative">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 200)}
+          placeholder="Drill-down: Search Employee..."
+          className="w-full bg-slate-900 border border-slate-700/85 rounded-xl pl-9 pr-8 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors"
+        />
+        {query && (
+          <button
+            onClick={() => {
+              setQuery("");
+              setResults([]);
+            }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+          >
+            <X size={12} />
+          </button>
+        )}
+      </div>
+
+      {open && (query.trim().length >= 2) && (
+        <div className="absolute top-full mt-2 w-full bg-slate-950/95 border border-white/10 rounded-xl shadow-2xl backdrop-blur-md overflow-hidden max-h-48 overflow-y-auto">
+          {searching && (
+            <div className="p-3 text-center text-xs text-slate-500 flex items-center justify-center gap-2">
+              <Loader2 size={12} className="animate-spin text-violet-400" /> Searching...
+            </div>
+          )}
+          {!searching && results.length === 0 && (
+            <div className="p-3 text-center text-xs text-slate-500">No employees found</div>
+          )}
+          {!searching && results.map((emp) => (
+            <div
+              key={emp.id}
+              onClick={() => {
+                navigate(`/employees/${emp.id}/dashboard`);
+                setOpen(false);
+              }}
+              className="flex items-center gap-2 px-3 py-2 hover:bg-violet-600/10 cursor-pointer transition-colors border-b border-white/5 last:border-0"
+            >
+              <div className="w-6 h-6 rounded-full bg-violet-600 flex items-center justify-center shrink-0 text-[10px] font-bold text-white">
+                {emp.name?.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-white truncate">{emp.name}</p>
+                <p className="text-[10px] text-slate-400 truncate">{emp.designation || "Employee"}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
 export default function Dashboard() {
   const { user, isAdmin, isManager, isHR, isEmployee } = useAuth();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState("overview");
+
+  const isPrivileged = isAdmin || isManager || isHR;
+
+  const overviewLabel = {
+    management_admin: "Company Overview",
+    senior_manager:   "Team Overview",
+    hr_recruiter:     "Recruitment Overview",
+  }[user?.role] || "Overview";
 
   const roleLabel = {
     management_admin: "Administrator",
@@ -517,11 +620,48 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Toggle View & Search Bar */}
+      {isPrivileged && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="inline-flex p-1 bg-slate-900/60 border border-white/5 rounded-xl shrink-0">
+            <button
+              onClick={() => setActiveTab("overview")}
+              className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 ${
+                activeTab === "overview"
+                  ? "bg-violet-600 text-white shadow-md shadow-violet-500/10"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              {overviewLabel}
+            </button>
+            <button
+              onClick={() => setActiveTab("activity")}
+              className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 ${
+                activeTab === "activity"
+                  ? "bg-violet-600 text-white shadow-md shadow-violet-500/10"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              My Activity
+            </button>
+          </div>
+
+          {activeTab === "overview" && (isAdmin || isManager) && (
+            <EmployeeSearchBox />
+          )}
+        </div>
+      )}
+
       {/* Role-specific content */}
-      {isAdmin    && <AdminDashboard />}
-      {isManager  && !isAdmin && <ManagerDashboard />}
-      {isHR       && !isAdmin && <RecruiterDashboard />}
-      {isEmployee && !isAdmin && !isManager && !isHR && <EmployeeDashboard />}
+      {activeTab === "activity" && <EmployeeDashboard />}
+      {activeTab === "overview" && (
+        <>
+          {isAdmin    && <AdminDashboard />}
+          {isManager  && !isAdmin && <ManagerDashboard />}
+          {isHR       && !isAdmin && <RecruiterDashboard />}
+          {isEmployee && !isAdmin && !isManager && !isHR && <EmployeeDashboard />}
+        </>
+      )}
     </div>
   );
 }

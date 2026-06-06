@@ -149,7 +149,7 @@ async def init_db():
 # Thread-safe TTL cache for expensive dashboard queries.
 # 60-second TTL — fresh enough for near-real-time, avoids DB storms.
 _cache_lock = threading.Lock()
-_dashboard_cache: TTLCache = TTLCache(maxsize=128, ttl=60)
+_dashboard_cache: TTLCache = TTLCache(maxsize=10240, ttl=60)
 
 
 def get_cache() -> TTLCache:
@@ -164,3 +164,9 @@ def cache_get(key: str):
 def cache_set(key: str, value):
     with _cache_lock:
         _dashboard_cache[key] = value
+
+
+def cache_delete(key: str):
+    with _cache_lock:
+        if key in _dashboard_cache:
+            del _dashboard_cache[key]
