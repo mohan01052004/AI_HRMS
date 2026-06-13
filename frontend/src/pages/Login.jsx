@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Eye, EyeOff, Building2, Loader2, AlertCircle } from "lucide-react";
+import { Eye, EyeOff, Building2, Loader2, AlertCircle, ArrowLeft } from "lucide-react";
 
 const DEMO_USERS = [
   { label: "Admin", email: "admin@hrms.com", role: "management_admin", color: "from-violet-500 to-fuchsia-500" },
@@ -189,9 +189,19 @@ export default function Login() {
           </div>
         </div>
 
-        <p className="text-center text-[9px] text-slate-600 mt-4 tracking-wide">
-          Secured with JWT and Cryptographic Hashing · Version 2.0
-        </p>
+        <div className="flex flex-col items-center gap-3 mt-4">
+          <button
+            onClick={() => navigate("/")}
+            className="text-[11px] font-semibold text-slate-400 hover:text-white transition-colors flex items-center gap-1.5 cursor-pointer"
+          >
+            <ArrowLeft size={12} />
+            Back to Home
+          </button>
+          
+          <p className="text-center text-[9px] text-slate-600 tracking-wide">
+            Secured with JWT and Cryptographic Hashing · Version 2.0
+          </p>
+        </div>
       </div>
     </div>
   );
