@@ -12,6 +12,7 @@ import Navbar from "./components/Navbar";
 import ChatBot from "./components/ChatBot";
 
 // Pages
+import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Employees from "./pages/Employees";
@@ -78,8 +79,8 @@ export default function App() {
           />
           <Routes>
             {/* Public routes */}
+            <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
             {/* Protected layout routes */}
             <Route
